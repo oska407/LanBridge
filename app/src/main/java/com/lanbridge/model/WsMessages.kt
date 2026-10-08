@@ -22,7 +22,10 @@ sealed class WsMsg {
 
     data class FileMetaMsg(val meta: FileMeta, val from: String) : WsMsg() {
         override val type = "file_meta"; override val id = meta.id
-        override fun toJson() = super.toJson().putAll(meta.toJson()).put("from", from)
+        override fun toJson() = super.toJson().apply {
+            val m = meta.toJson()
+            m.keys().forEach { put(it, m.get(it)) }
+        }.put("from", from)
     }
 
     data class FileReady(val fileId: String, val ok: Boolean) : WsMsg() {

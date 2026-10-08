@@ -165,8 +165,9 @@ class GalleryActivity : AppCompatActivity() {
             }
         }
         if (files.isEmpty()) return
-        setResult(RESULT_OK, intent().putStringArrayListExtra(RESULT_FILES, files)
-            .putExtra(RESULT_ORIGINAL, findViewById<CheckBox>(R.id.cbOriginal).isChecked))
+        intent.putExtra(RESULT_FILES, files)
+        intent.putExtra(RESULT_ORIGINAL, findViewById<CheckBox>(R.id.cbOriginal).isChecked)
+        setResult(RESULT_OK, intent)
         finish()
     }
 }

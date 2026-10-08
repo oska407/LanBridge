@@ -3,6 +3,7 @@ package com.lanbridge.chat
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
@@ -161,8 +162,8 @@ class ChatAdapter(
 
     class VH(v: View) : RecyclerView.ViewHolder(v) {
         val tvTime: TextView = v.findViewById(R.id.tvTime)
-        val row: View = v.findViewById(R.id.row)
-        val bubble: ViewGroup = v.findViewById(R.id.bubble)
+        val row: LinearLayout = v.findViewById(R.id.row)
+        val bubble: LinearLayout = v.findViewById(R.id.bubble)
         val tvText: TextView = v.findViewById(R.id.tvText)
         val ivImage: android.widget.ImageView = v.findViewById(R.id.ivImage)
         val fileRow: View = v.findViewById(R.id.fileRow)

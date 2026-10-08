@@ -60,7 +60,7 @@ object MessageMenu {
             }
         })
         popup.anchorView = anchor
-        popup.modal = true
+        popup.isModal = true
         popup.width = ctx.resources.displayMetrics.widthPixels / 2
         popup.setOnItemClickListener { _: AdapterView<*>, _, pos, _ ->
             popup.dismiss()
