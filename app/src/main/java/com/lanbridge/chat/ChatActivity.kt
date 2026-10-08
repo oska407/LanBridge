@@ -34,6 +34,7 @@ import com.lanbridge.service.BridgeForegroundService
 import com.lanbridge.settings.SettingsActivity
 import com.lanbridge.wechat.InboundCopier
 import com.lanbridge.wechat.OutboundShare
+import kotlinx.coroutines.launch
 
 /**
  * 聊天页（T10）：根页面无返回箭头、锁竖屏、edge-to-edge 三处 bottom inset、
@@ -79,7 +80,7 @@ class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Cal
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        WindowCompat.enableEdgeToEdge(window)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         setContentView(R.layout.activity_chat)
 
         titleBar = findViewById(R.id.titleBar)
@@ -297,6 +298,15 @@ class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Cal
             msg.type == com.lanbridge.model.MsgType.TEXT -> OutboundShare.shareText(this, msg.text)
             ref?.localPath != null && java.io.File(ref.localPath!!).exists() ->
                 OutboundShare.shareFile(this, java.io.File(ref.localPath!!), ref.mime)
+        }
+    }
+
+    override fun onShareWeChat(msg: Message) {
+        // 「分享到微信」菜单项（本软件核心价值）：文本直发，文件经 FileProvider
+        when {
+            msg.type == com.lanbridge.model.MsgType.TEXT -> OutboundShare.shareText(this, msg.text)
+            msg.fileRef?.localPath != null && java.io.File(msg.fileRef!!.localPath!!).exists() ->
+                OutboundShare.shareFile(this, java.io.File(msg.fileRef!!.localPath!!), msg.fileRef!!.mime)
         }
     }
 

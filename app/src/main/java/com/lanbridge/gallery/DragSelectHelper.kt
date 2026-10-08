@@ -26,7 +26,7 @@ class DragSelectHelper(
 
     val isActive get() = dragging
 
-    override fun onInterceptTouchEvent(e: MotionEvent): Boolean {
+    override fun onInterceptTouchEvent(rv: RecyclerView, e: MotionEvent): Boolean {
         when (e.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 downX = e.x; downY = e.y
@@ -63,7 +63,7 @@ class DragSelectHelper(
         return dragging
     }
 
-    override fun onTouchEvent(e: MotionEvent) {
+    override fun onTouchEvent(rv: RecyclerView, e: MotionEvent) {
         if (e.actionMasked == MotionEvent.ACTION_MOVE) dragTo(e)
         if (e.actionMasked == MotionEvent.ACTION_UP || e.actionMasked == MotionEvent.ACTION_CANCEL) {
             dragging = false

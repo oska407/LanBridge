@@ -1,10 +1,11 @@
 package com.lanbridge.server
 
 import com.lanbridge.model.WsMsg
-import io.ktor.websocket.DefaultWebSocketServerSession
+import io.ktor.server.websocket.DefaultWebSocketServerSession
 import io.ktor.websocket.Frame
 import io.ktor.websocket.close
 import io.ktor.websocket.readText
+import io.ktor.websocket.send
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicReference

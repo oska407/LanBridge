@@ -16,7 +16,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 /**
- * 微信分享入站（T18）：ACTION_SEND / SEND_MULTIPLE，mimeType */*。
+ * 微信分享入站（T18）：ACTION_SEND 与 SEND_MULTIPLE，任意类型均可。
  * onCreate/onNewIntent 内同步拷贝（防临时权限失效 Q3）；拷贝完成后经 TransferEngine 推给 PC（T19）。
  * 独立任务栈 + noHistory：返回键回到聊天页（T10D）。
  */
