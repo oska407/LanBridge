@@ -23,8 +23,10 @@ jobs:
       # 「Wrong version in preinstalled sdkmanager」导致任务失败，直接用 sdkmanager 安装所需包即可。
       - name: Accept licenses & install SDK packages
         run: |
-          yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
+          SDKMANAGER=$(ls "${ANDROID_HOME:-/usr/local/lib/android/sdk}"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | head -1)
+          echo "Using sdkmanager: $SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" "platforms;android-34" "build-tools;34.0.0"
 
       - name: Build Debug APK (Gradle 8.5)
         uses: gradle/gradle-build-action@v3
