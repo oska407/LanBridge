@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LanBridge</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div id="app">
+  <!-- 标题栏 -->
+  <header id="titlebar">
+    <span class="brand">LanBridge</span>
+    <span id="conn"><i id="dot" class="dot off"></i><span id="connText">连接中…</span></span>
+    <span id="peer"></span>
+  </header>
+  <div id="banner" class="banner hidden"></div>
+
+  <!-- 气泡区（PC 保留滚动条） -->
+  <main id="chat"></main>
+
+  <!-- 工具条四项：发文件/发照片/截屏/清空（末位标红） -->
+  <nav id="toolbar">
+    <button id="btnFile"  title="发文件">📁 <span>发文件</span></button>
+    <button id="btnPhoto" title="发照片">🖼 <span>发照片</span></button>
+    <button id="btnShot"  title="截屏（粘贴）">✂ <span>截屏</span></button>
+    <button id="btnClear" title="清空（二次确认）" class="danger">🗑 <span>清空</span></button>
+    <input type="file" id="fileInput" multiple hidden>
+    <input type="file" id="photoInput" multiple accept="image/*" hidden>
+  </nav>
+
+  <!-- 发送窗口：输入区（含待发送附件缩略图）+ 发送按钮 -->
+  <footer id="composer" class="composer">
+    <div id="attaches" class="attaches"></div>
+    <div class="inputRow">
+      <textarea id="input" placeholder="输入消息… Enter 换行，Ctrl+Enter 发送"></textarea>
+      <button id="btnSend" class="primary" disabled>发送</button>
+    </div>
+  </footer>
+</div>
+<div id="ctxmenu" class="ctxmenu hidden"></div>
+<script type="module" src="/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 字号（sp）T10D：title17/body16/button15/caption12 -->
+    <dimen name="font_title">17sp</dimen>
+    <dimen name="font_body">16sp</dimen>
+    <dimen name="font_button">15sp</dimen>
+    <dimen name="font_caption">12sp</dimen>
+    <dimen name="toolbar_height">56dp</dimen>
+    <dimen name="bubble_max_width">280dp</dimen>
+</resources>

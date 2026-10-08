@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 设计 Token（ARCHITECTURE.md §7，双端同源） -->
+    <!-- 主绿系 -->
+    <color name="green_500">#07C160</color>
+    <color name="green_600">#06AD56</color>
+    <color name="green_700">#0A8A43</color>  <!-- 实心承载白字一律用它（4.4:1） -->
+    <color name="green_50">#E8F8EE</color>
+    <!-- 中性 -->
+    <color name="n_white">#FFFFFF</color>
+    <color name="n_bg">#EDEDED</color>
+    <color name="n_surface">#F7F7F7</color>
+    <color name="n_divider">#D9D9D9</color>
+    <color name="n_scrollbar">#C8C8C8</color>
+    <color name="n_text_secondary">#6B6B6B</color>
+    <color name="n_text_primary">#1A1A1A</color>
+    <!-- 语义 -->
+    <color name="semantic_link">#576B95</color>
+    <color name="danger_text">#C9302C</color>
+    <color name="danger_btn">#FA5151</color>
+    <color name="warn">#FF8F1F</color>
+    <!-- 聊天 -->
+    <color name="bubble_out">#95EC69</color>
+    <color name="bubble_in">#FFFFFF</color>
+    <color name="chat_bg">#EDEDED</color>
+    <!-- 图标背景（取自 logo 底色） -->
+    <color name="ic_launcher_background">#A3EDF6</color>
+</resources>

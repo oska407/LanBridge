@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- 接收/中转临时文件：分享到微信、用其他应用打开时需要经 FileProvider 暴露 -->
+    <cache-path name="lanbridge_tmp" path="lanbridge_tmp/" />
+    <!-- 出站分享：仅暴露 lanbridge_out 与用户保存目录，绝不暴露应用私有根路径 -->
+    <cache-path name="lanbridge_out" path="lanbridge_out/" />
+    <external-path name="download_lanbridge" path="Download/LanBridge/" />
+</paths>
