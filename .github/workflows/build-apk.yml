@@ -18,13 +18,15 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      # ubuntu-latest 已预装 Android SDK（ANDROID_HOME=/usr/local/lib/android/sdk，sdkmanager 在 PATH）。
+      # 不使用 android-actions/setup-android@v3：其对预装 sdkmanager 的版本校验会误报
+      # 「Wrong version in preinstalled sdkmanager」导致任务失败，直接用 sdkmanager 安装所需包即可。
+      - name: Accept licenses & install SDK packages
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
 
-      - name: Install SDK packages (compileSdk 34 + build-tools)
-        run: sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
-
-      - name: Build Debug APK (Gradle 8.5, 无需本地 wrapper)
+      - name: Build Debug APK (Gradle 8.5)
         uses: gradle/gradle-build-action@v3
         with:
           gradle-version: 8.5
