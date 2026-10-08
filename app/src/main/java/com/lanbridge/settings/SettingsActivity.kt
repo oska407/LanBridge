@@ -73,15 +73,15 @@ class SettingsActivity : AppCompatActivity() {
         rows.add(Row.Item(getString(R.string.settings_group_connection), getString(R.string.settings_title), url,
             onClick = { showQr(url) }))
         rows.add(Row.Item(getString(R.string.settings_group_connection), getString(R.string.settings_port),
-            "${repo.serverPort} · 重启服务生效", Row.Kind.CHOICE, listOf("8080", "8000", "8888"), onClick = { changePort() })
+            "${repo.serverPort} · 重启服务生效", Row.Kind.CHOICE, listOf("8080", "8000", "8888"), onClick = { changePort() }))
 
         rows.add(Row.Group(getString(R.string.settings_group_image)))
         rows.add(Row.Item(getString(R.string.settings_group_image), getString(R.string.settings_compress_long),
             "${if (repo.compressMaxLongSide == 0) "原图" else repo.compressLongLabel()} · 下次发送生效",
-            Row.Kind.CHOICE, listOf("1080", "1920", "原图"), onClick = { pickLongSide() })
+            Row.Kind.CHOICE, listOf("1080", "1920", "原图"), onClick = { pickLongSide() }))
         rows.add(Row.Item(getString(R.string.settings_group_image), getString(R.string.settings_compress_quality),
             "${repo.compressQuality}% · 下次发送生效",
-            Row.Kind.CHOICE, listOf("60", "80", "90"), onClick = { pickQuality() })
+            Row.Kind.CHOICE, listOf("60", "80", "90"), onClick = { pickQuality() }))
         rows.add(Row.Item(getString(R.string.settings_group_image), getString(R.string.settings_send_original),
             "开启后直传原文件 · 下次发送生效", Row.Kind.SWITCH, checked = repo.sendOriginal,
             onSwitch = { repo.sendOriginal = it }))
@@ -102,7 +102,7 @@ class SettingsActivity : AppCompatActivity() {
         rows.add(Row.Item(getString(R.string.settings_group_chat), getString(R.string.settings_save_dir_image), repo.saveDirImage))
         rows.add(Row.Item(getString(R.string.settings_group_chat), getString(R.string.settings_save_dir_file), repo.saveDirFile))
         rows.add(Row.Item(getString(R.string.settings_group_chat), getString(R.string.settings_clear_cache),
-            "清空传输临时文件 · 立即生效", Row.Kind.DANGER, onClick = { clearCache() })
+            "清空传输临时文件 · 立即生效", Row.Kind.DANGER, onClick = { clearCache() }))
 
         rows.add(Row.Group(getString(R.string.settings_group_about)))
         rows.add(Row.Item(getString(R.string.settings_group_about), getString(R.string.settings_version), "1.0.0"))
