@@ -46,7 +46,8 @@ body {
   word-break: break-all; position: relative; cursor: pointer;
 }
 .row.out .bubble { background: var(--bubble-out); }
-.bubble img { max-width: 240px; max-height: 240px; display: block; border-radius: 4px; }
+/* 照片/文件预览图统一缩小 30%（240→168，v1.1.5 用户要求） */
+.bubble img { max-width: 168px; max-height: 168px; display: block; border-radius: 4px; }
 .bubble .fname { color: var(--link); text-decoration: underline; }
 .bubble .fsize { color: var(--text-2); font-size: 12px; margin-left: 8px; }
 .bubble .progress { height: 4px; background: var(--n-divider); border-radius: 2px; margin-top: 6px; overflow: hidden; }

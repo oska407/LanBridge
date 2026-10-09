@@ -14,6 +14,6 @@ class LanBridgeApp : Application() {
         super.onCreate()
         CrashLogger.install(this) // 崩溃堆栈先落盘再交还系统，便于诊断"屡次停止运行"
         SessionState.init(this)
-        TransferEngine.init(FileStore(FileStore.dirOf(this)))
+        TransferEngine.init(FileStore(FileStore.dirOf(this)), this)
     }
 }

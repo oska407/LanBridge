@@ -42,8 +42,27 @@ class SettingsRepository(context: Context) {
         get() = sp.getBoolean(KEY_NOTIFY, true)
         set(v) { sp.edit().putBoolean(KEY_NOTIFY, v).apply() }
 
-    val saveDirImage: String get() = "Pictures/LanBridge"
-    val saveDirFile: String get() = "Download/LanBridge"
+    // 保存位置（可编辑，v1.1.5）：MediaStore RELATIVE_PATH，形如 Pictures/LanBridge
+    var saveDirImage: String
+        get() = sp.getString(KEY_SAVE_DIR_IMAGE, DEF_SAVE_IMAGE) ?: DEF_SAVE_IMAGE
+        set(v) { sp.edit().putString(KEY_SAVE_DIR_IMAGE, normalizeDir(v, DEF_SAVE_IMAGE)).apply() }
+
+    var saveDirFile: String
+        get() = sp.getString(KEY_SAVE_DIR_FILE, DEF_SAVE_FILE) ?: DEF_SAVE_FILE
+        set(v) { sp.edit().putString(KEY_SAVE_DIR_FILE, normalizeDir(v, DEF_SAVE_FILE)).apply() }
+
+    /** 缓存水位（MB）：0=不限制，默认 200。超出按最旧优先清理 lanbridge_tmp + lanbridge_out */
+    var cacheLimitMb: Int
+        get() = sp.getInt(KEY_CACHE_LIMIT, 200)
+        set(v) { sp.edit().putInt(KEY_CACHE_LIMIT, v).apply() }
+
+    fun cacheLimitLabel(): String = if (cacheLimitMb <= 0) "不限制" else "${cacheLimitMb}MB"
+
+    private fun normalizeDir(v: String, def: String): String {
+        val s = v.trim().replace("\\", "/").trim('/').replace(Regex("/+"), "/")
+        if (s.isEmpty() || s.contains("..")) return def // 防越权/空值
+        return s
+    }
 
     companion object {
         private const val KEY_PORT = "serverPort"
@@ -53,6 +72,11 @@ class SettingsRepository(context: Context) {
         private const val KEY_AUTO_STOP = "autoStopAfterTransfer"
         private const val KEY_SHOW_URL = "showUrlInChat"
         private const val KEY_NOTIFY = "notifyEnabled"
+        private const val KEY_SAVE_DIR_IMAGE = "saveDirImage"
+        private const val KEY_SAVE_DIR_FILE = "saveDirFile"
+        private const val KEY_CACHE_LIMIT = "cacheLimitMb"
+        private const val DEF_SAVE_IMAGE = "Pictures/LanBridge"
+        private const val DEF_SAVE_FILE = "Download/LanBridge"
 
         @Volatile private var instance: SettingsRepository? = null
         fun get(ctx: Context): SettingsRepository =

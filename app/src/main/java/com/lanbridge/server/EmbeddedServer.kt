@@ -125,6 +125,8 @@ class EmbeddedServer(
                 }
             } finally {
                 hub.unregister(this)
+                // PC 断连：仍在接收中的文件没有后续分块了，标记为失败（提示在电脑端重发）
+                TransferEngine.markIncomingFailed()
             }
         }
 
@@ -137,6 +139,11 @@ class EmbeddedServer(
             val index = call.request.header("X-Chunk-Index")?.toIntOrNull() ?: 0
             val chunkSize = call.request.header("X-Chunk-Size")?.toIntOrNull() ?: 1_048_576
             val offsetInChunk = call.request.header("X-Chunk-Offset")?.toIntOrNull() ?: 0
+            // PC 上传首个分块时先落「接收中」占位气泡，之后按已收字节回填进度（v1.1.5）
+            val upName = call.request.header("X-File-Name")?.let {
+                runCatching { java.net.URLDecoder.decode(it, "UTF-8") }.getOrDefault(it) } ?: ""
+            val upSize = call.request.header("X-File-Size")?.toLongOrNull() ?: 0L
+            if (index == 0) TransferEngine.onIncomingStart(fileId, upName, upSize)
 
             val channel = call.receiveChannel()
             val buf = ByteArray(BUF)
@@ -149,6 +156,7 @@ class EmbeddedServer(
                     written += n
                 }
             }
+            TransferEngine.onIncomingProgress(fileId, fileStore.sizeOf(fileId), upSize)
             call.respondText("""{"ok":true,"fileId":"$fileId"}""", ContentType.Application.Json)
         }
 

@@ -59,6 +59,12 @@ object SessionState {
         notifyChanged()
     }
 
+    /** 移除单条消息（接收占位气泡被真实消息替换时用） */
+    fun removeMessage(id: String) {
+        synchronized(messages) { messages.removeAll { it.id == id } }
+        notifyChanged()
+    }
+
     /** 清空用户消息但保留首条地址消息（F-19 AC3）；不清临时文件 */
     fun clearMessages() {
         synchronized(messages) {

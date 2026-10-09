@@ -406,6 +406,17 @@ class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Cal
         }
     }
 
+    override fun onPreviewImage(msg: Message) {
+        // 点图片看大图（v1.1.5）：接收的文件在 cacheDir/lanbridge_tmp 下，存在即可查看
+        val p = msg.fileRef?.localPath ?: return
+        if (!java.io.File(p).exists()) return
+        PhotoViewActivity.current = msg
+        startActivity(Intent(this, PhotoViewActivity::class.java)
+            .putExtra(PhotoViewActivity.EXTRA_PATH, p)
+            .putExtra(PhotoViewActivity.EXTRA_NAME, msg.fileRef?.name)
+            .putExtra(PhotoViewActivity.EXTRA_MIME, msg.fileRef?.mime))
+    }
+
     override fun onOpenWith(msg: Message) {
         val ref = msg.fileRef ?: return
         val path = ref.localPath ?: return

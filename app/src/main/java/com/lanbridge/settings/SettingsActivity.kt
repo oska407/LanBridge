@@ -100,8 +100,17 @@ class SettingsActivity : AppCompatActivity() {
         rows.add(Row.Item(getString(R.string.settings_group_chat), getString(R.string.settings_notify),
             "一个开关管两端：手机通知/震动 + PC 提示 · 立即生效", Row.Kind.SWITCH, checked = repo.notifyEnabled,
             onSwitch = { repo.notifyEnabled = it; SessionState.notifyEnabled = it }))
-        rows.add(Row.Item(getString(R.string.settings_group_chat), getString(R.string.settings_save_dir_image), repo.saveDirImage))
-        rows.add(Row.Item(getString(R.string.settings_group_chat), getString(R.string.settings_save_dir_file), repo.saveDirFile))
+        // 保存位置可在设置里改（v1.1.5 之前是硬编码只读，摆着误导）
+        rows.add(Row.Item(getString(R.string.settings_group_chat), getString(R.string.settings_save_dir_image),
+            "${repo.saveDirImage} · 点击修改", Row.Kind.ACTION, onClick = { editSaveDir(true) }))
+        rows.add(Row.Item(getString(R.string.settings_group_chat), getString(R.string.settings_save_dir_file),
+            "${repo.saveDirFile} · 点击修改", Row.Kind.ACTION, onClick = { editSaveDir(false) }))
+        // 缓存水位：超出自动清最旧，默认 200MB
+        val usage = "%.1f".format(com.lanbridge.util.CacheGuard.usageBytes(this) / 1048576f)
+        rows.add(Row.Item(getString(R.string.settings_group_chat), getString(R.string.settings_cache_limit),
+            "当前 ${usage}MB · 上限 ${repo.cacheLimitLabel()} · 超出自动清最旧",
+            Row.Kind.CHOICE, listOf("100MB", "200MB", "500MB", "1GB", "不限制"),
+            onClick = { pickCacheLimit() }))
         rows.add(Row.Item(getString(R.string.settings_group_chat), getString(R.string.settings_clear_cache),
             "清空传输临时文件 · 立即生效", Row.Kind.DANGER, onClick = { clearCache() }))
 
@@ -175,14 +184,50 @@ class SettingsActivity : AppCompatActivity() {
             }.show()
     }
 
+    /** 保存位置编辑（v1.1.5）：输入相对存储根目录的路径，如 Pictures/LanBridge */
+    private fun editSaveDir(isImage: Boolean) {
+        val cur = if (isImage) repo.saveDirImage else repo.saveDirFile
+        val input = android.widget.EditText(this).apply {
+            setText(cur); setSingleLine(true); setSelection(cur.length)
+        }
+        AlertDialog.Builder(this)
+            .setTitle(if (isImage) R.string.settings_save_dir_image else R.string.settings_save_dir_file)
+            .setMessage(R.string.settings_save_dir_hint)
+            .setView(input)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                val v = input.text.toString().trim()
+                if (v.isEmpty()) {
+                    Toast.makeText(this, "路径不能为空", Toast.LENGTH_SHORT).show(); return@setPositiveButton
+                }
+                if (isImage) repo.saveDirImage = v else repo.saveDirFile = v
+                Toast.makeText(this, "已保存：${if (isImage) repo.saveDirImage else repo.saveDirFile}",
+                    Toast.LENGTH_SHORT).show()
+                buildRows()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    /** 缓存水位：默认 200MB（发大文件时按最旧优先清理） */
+    private fun pickCacheLimit() {
+        val opts = listOf(100, 200, 500, 1024, 0)
+        val labels = listOf("100MB", "200MB（默认）", "500MB", "1GB", "不限制")
+        AlertDialog.Builder(this).setTitle(R.string.settings_cache_limit)
+            .setItems(labels.toTypedArray()) { _, which ->
+                repo.cacheLimitMb = opts[which]
+                com.lanbridge.util.CacheGuard.trim(this, repo.cacheLimitMb)
+                buildRows()
+            }.show()
+    }
+
     private fun clearCache() {
-        val dir = com.lanbridge.server.FileStore.dirOf(this)
-        var size = dir.walkTopDown().filter { it.isFile }.sumOf { it.length() }
+        val size = com.lanbridge.util.CacheGuard.usageBytes(this)
         AlertDialog.Builder(this).setTitle(R.string.settings_clear_cache)
             .setMessage("将清空约 ${"%.1f".format(size / 1048576f)} MB 临时文件")
             .setPositiveButton(android.R.string.ok) { _, _ ->
-                dir.listFiles()?.forEach { it.delete() }
+                com.lanbridge.util.CacheGuard.clearAll(this) // 两处：lanbridge_tmp + lanbridge_out
                 Toast.makeText(this, "已清空", Toast.LENGTH_SHORT).show()
+                buildRows()
             }.setNegativeButton(android.R.string.cancel, null).show()
     }
 

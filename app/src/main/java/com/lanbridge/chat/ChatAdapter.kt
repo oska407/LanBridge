@@ -12,6 +12,9 @@ import com.lanbridge.model.Message
 import com.lanbridge.model.MsgStatus
 import com.lanbridge.model.MsgType
 import com.lanbridge.server.SessionState
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -33,6 +36,7 @@ class ChatAdapter(
         fun onLongPress(v: View, msg: Message)
         fun onResend(msg: Message)
         fun onCopyUrl()
+        fun onPreviewImage(msg: Message) // 点图片看大图（v1.1.5）
     }
 
     private val items = mutableListOf<Message>()
@@ -86,6 +90,7 @@ class ChatAdapter(
                 h.btnCopy.visibility = View.VISIBLE
                 h.btnCopy.setOnClickListener { callbacks.onCopyUrl() }
                 h.ivImage.visibility = View.GONE; h.fileRow.visibility = View.GONE
+                h.imageWrap.visibility = View.GONE; h.tvPlay.visibility = View.GONE
                 h.progress.visibility = View.GONE; h.tvStatus.visibility = View.GONE
                 h.btnResend.visibility = View.GONE
                 h.cbSelect.visibility = View.GONE // 地址消息不可勾选（F-17 AC4）
@@ -106,30 +111,51 @@ class ChatAdapter(
                     h.tvFileSize.text = formatSize(msg.fileRef?.size ?: 0)
                 }
 
-                h.ivImage.visibility = if (msg.type == MsgType.IMAGE) View.VISIBLE else View.GONE
+                // 图片 / 视频（视频是 FILE 类型但 kind=video：取首帧 + 播放角标）
+                val isVideo = msg.type == MsgType.FILE && msg.fileRef?.kind == "video"
+                val showImage = msg.type == MsgType.IMAGE || isVideo
+                h.imageWrap.visibility = if (showImage) View.VISIBLE else View.GONE
+                h.ivImage.visibility = if (showImage) View.VISIBLE else View.GONE
+                h.tvPlay.visibility = if (isVideo) View.VISIBLE else View.GONE
+                val path = msg.fileRef?.localPath
                 if (msg.type == MsgType.IMAGE) {
-                    Glide.with(h.ivImage)
-                        .load(msg.fileRef?.localPath ?: msg.fileRef?.id)
-                        .centerCrop()
-                        .into(h.ivImage)
+                    Glide.with(h.ivImage).load(path ?: msg.fileRef?.id).centerCrop().into(h.ivImage)
+                    h.ivImage.setOnClickListener { callbacks.onPreviewImage(msg) } // 点图看大图
+                } else if (isVideo && !path.isNullOrBlank()) {
+                    loadVideoFrame(h.ivImage, path)
+                    h.ivImage.setOnClickListener { callbacks.onOpenWith(msg) } // 点击调系统播放器
+                } else {
+                    h.ivImage.setOnClickListener(null)
                 }
 
-                // 发送状态（F-19 AC1）
+                // 发送/接收状态（F-19 AC1；RECEIVING = PC 正在上传过来）
                 when (msg.status) {
                     MsgStatus.FAILED -> {
                         h.tvStatus.visibility = View.VISIBLE
-                        h.tvStatus.text = ctx.getString(R.string.send_failed)
-                        h.btnResend.visibility = View.VISIBLE
-                        h.btnResend.setOnClickListener { callbacks.onResend(msg) }
+                        // 接收失败无法在手机侧重发（文件在 PC），提示回电脑端点重发
+                        val mine = msg.from == "phone"
+                        h.tvStatus.text = if (mine) ctx.getString(R.string.send_failed)
+                                          else ctx.getString(R.string.recv_failed_hint)
+                        h.btnResend.visibility = if (mine) View.VISIBLE else View.GONE
+                        if (mine) h.btnResend.setOnClickListener { callbacks.onResend(msg) }
                     }
                     MsgStatus.SENDING -> {
                         h.tvStatus.visibility = View.VISIBLE
                         h.tvStatus.text = "…"
                         h.btnResend.visibility = View.GONE
                     }
+                    MsgStatus.RECEIVING -> {
+                        h.tvStatus.visibility = View.VISIBLE
+                        h.tvStatus.text = if (msg.progress >= 0) "接收中 ${msg.progress}%" else "接收中…"
+                        h.btnResend.visibility = View.GONE
+                    }
                     else -> { h.tvStatus.visibility = View.GONE; h.btnResend.visibility = View.GONE }
                 }
-                h.progress.visibility = View.GONE
+                // 接收进度条（PC 上传分块时回填 0-100）
+                if (msg.progress >= 0 && msg.status == MsgStatus.RECEIVING) {
+                    h.progress.visibility = View.VISIBLE
+                    h.progress.progress = msg.progress
+                } else h.progress.visibility = View.GONE
                 bindSelection(h, msg)
             }
         }
@@ -154,6 +180,25 @@ class ChatAdapter(
         if (!selectable) h.row.isClickable = false
     }
 
+    /** 视频首帧缩略图（v1.1.5）：IO 线程取帧避免卡滚动，取不到帧时回退 Glide 兜底 */
+    private fun loadVideoFrame(iv: android.widget.ImageView, path: String) {
+        iv.tag = path // 复用防串图
+        CoroutineScope(Dispatchers.IO).launch {
+            val bmp = runCatching {
+                val r = android.media.MediaMetadataRetriever()
+                try {
+                    r.setDataSource(path)
+                    r.getFrameAtTime(0, android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                } finally { runCatching { r.release() } }
+            }.getOrNull()
+            if (iv.tag != path) return@launch
+            iv.post {
+                if (bmp != null) iv.setImageBitmap(bmp)
+                else Glide.with(iv).load(path).centerCrop().into(iv)
+            }
+        }
+    }
+
     private fun formatSize(bytes: Long): String = when {
         bytes >= 1 shl 20 -> "%.1f MB".format(bytes / 1048576f)
         bytes >= 1 shl 10 -> "%.1f KB".format(bytes / 1024f)
@@ -166,6 +211,8 @@ class ChatAdapter(
         val bubble: LinearLayout = v.findViewById(R.id.bubble)
         val tvText: TextView = v.findViewById(R.id.tvText)
         val ivImage: android.widget.ImageView = v.findViewById(R.id.ivImage)
+        val imageWrap: View = v.findViewById(R.id.imageWrap)
+        val tvPlay: TextView = v.findViewById(R.id.tvPlay)
         val fileRow: View = v.findViewById(R.id.fileRow)
         val tvFileName: TextView = v.findViewById(R.id.tvFileName)
         val tvFileSize: TextView = v.findViewById(R.id.tvFileSize)

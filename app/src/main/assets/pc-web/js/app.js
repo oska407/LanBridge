@@ -214,6 +214,8 @@ async function pump() { // 串行：并发=1（F-20 AC6）
         method: 'POST',
         headers: {
           'X-File-Id': meta.id, 'X-Chunk-Index': String(i), 'X-Chunk-Size': String(CHUNK),
+          // 供手机端显示「接收中 x%」占位气泡（头信息只能 ASCII，中文名编码后由服务端解码）
+          'X-File-Name': encodeURIComponent(meta.name || ''), 'X-File-Size': String(meta.size || 0),
           'Content-Type': 'application/octet-stream',
         },
         body: blob,
@@ -224,7 +226,13 @@ async function pump() { // 串行：并发=1（F-20 AC6）
     send({ type: 'file_meta', id: meta.id, from: 'pc', name: meta.name, mime: meta.mime,
            size: meta.size, chunkSize: CHUNK, totalChunks: total, kind: meta.kind === 'image' ? 'image' : 'file' });
   } catch (e) {
-    markFailed(meta);
+    // 上传失败：保留「重发」入口（v1.1.5 之前这个按钮没接事件，点了没反应）
+    markFailed(meta, () => {
+      const old = document.querySelector(`.row[data-id="${meta.id}"]`);
+      if (old) old.remove();           // 移除失败气泡，重发成功后由服务端 file_meta 重建
+      queue.push({ file, meta });      // 沿用同一 fileId，分块从 0 重传
+      pump();
+    });
     showError('上传失败：' + (e && e.message));
   }
   uploading = false;
@@ -236,9 +244,16 @@ function updateProgress(meta, ratio) {
   if (meta.el) meta.el.style.width = `${Math.round(ratio * 100)}%`;
 }
 
-function markFailed(meta) {
+function markFailed(meta, retry) {
   const row = document.querySelector(`.row[data-id="${meta.id}"] .bubble`);
-  if (row) { row.classList.add('failed'); const s = document.createElement('div'); s.className = 'status'; s.innerHTML = '发送失败 <span class="resend">重发</span>'; row.appendChild(s); }
+  if (!row) return;
+  row.classList.add('failed');
+  const s = document.createElement('div');
+  s.className = 'status';
+  s.innerHTML = '发送失败 <span class="resend">重发</span>';
+  row.appendChild(s);
+  const btn = s.querySelector('.resend');
+  if (btn && retry) btn.onclick = retry; // 之前只渲染了「重发」文字，没绑事件
 }
 
 /* ---------- 输入区（驻留通道：拖拽/粘贴，≤9） ---------- */

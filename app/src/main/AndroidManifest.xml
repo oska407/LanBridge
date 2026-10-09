@@ -56,6 +56,13 @@
             android:screenOrientation="portrait"
             android:windowSoftInputMode="stateHidden" />
 
+        <!-- 聊天图片大图查看 -->
+        <activity
+            android:name=".chat.PhotoViewActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="stateHidden" />
+
         <!-- 设置页（唯一配置来源） -->
         <activity
             android:name=".settings.SettingsActivity"

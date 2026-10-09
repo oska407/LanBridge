@@ -9,6 +9,10 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.LinkProperties
+import android.net.Network
+import android.net.NetworkCapabilities
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -41,11 +45,19 @@ class BridgeForegroundService : Service() {
         CoroutineExceptionHandler { _, e -> CrashLogger.logThrowable(e, "service-scope") })
     private var server: EmbeddedServer? = null
     private var wakeLock: PowerManager.WakeLock? = null
+    private var currentIp: String = ""
+    private var netCallback: ConnectivityManager.NetworkCallback? = null
 
     override fun onCreate() {
         super.onCreate()
         createChannel()
-        TransferEngine.init(FileStore(FileStore.dirOf(this)))
+        TransferEngine.init(FileStore(FileStore.dirOf(this)), this)
+        // 启动即按水位清理一次残留（上次异常退出可能留下大文件）
+        scope.launch {
+            com.lanbridge.util.CacheGuard.trim(
+                this@BridgeForegroundService,
+                SettingsRepository.get(this@BridgeForegroundService).cacheLimitMb)
+        }
     }
 
     /** Android 8+ 必须预先创建通知渠道，否则前台通知不显示、服务可能被判定未前台化。 */
@@ -77,16 +89,53 @@ class BridgeForegroundService : Service() {
     }
 
     private fun startServer() {
-        if (server != null) return // 幂等：重复 startForegroundService/restart 不再起第二个实例
         val ip = HotspotIp.get(this)
-        val port = SettingsRepository.get(this).serverPort
+        currentIp = ip
+        scope.launch { launchServer(ip) }
+        registerNetworkWatch() // 网络切换后地址自愈（v1.1.5）
+    }
+
+    /** 监听默认网络变化：热点↔WiFi 切换、IP 变更后自动用新地址重启服务，
+     *  并刷新通知与聊天区那条地址消息（不再需要手动重启）。 */
+    private fun registerNetworkWatch() {
+        if (netCallback != null) return
+        val cm = runCatching { getSystemService(ConnectivityManager::class.java) }.getOrNull() ?: return
+        val cb = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) { onNetworkChanged("网络已连接") }
+            override fun onLinkPropertiesChanged(network: Network, lp: LinkProperties) { onNetworkChanged("链路属性变化") }
+            override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) { onNetworkChanged("网络能力变化") }
+        }
+        runCatching { cm.registerDefaultNetworkCallback(cb) }
+            .onFailure { CrashLogger.logThrowable(it, "net-watch") }
+        netCallback = cb
+    }
+
+    private fun onNetworkChanged(reason: String) {
+        val newIp = HotspotIp.get(this)
+        if (newIp.isBlank() || newIp == currentIp) return // 抖动/未真正变化，忽略
+        CrashLogger.log("net", "IP 变更 $currentIp → $newIp（$reason），重启服务以生效")
+        currentIp = newIp
         scope.launch {
-            val webDir = runCatching { copyWebAssets() }
-                .onFailure { CrashLogger.logThrowable(it, "copy-web-assets") }
-                .getOrNull() ?: run {
-                SessionState.setConnStatus("error")
-                return@launch
+            server?.stop()
+            server = null
+            launchServer(newIp)
+            Handler(Looper.getMainLooper()).post {
+                Toast.makeText(this@BridgeForegroundService,
+                    "网络已切换，新地址 http://$newIp:${SettingsRepository.get(this@BridgeForegroundService).serverPort}",
+                    Toast.LENGTH_LONG).show()
             }
+        }
+    }
+
+    private suspend fun launchServer(ip: String) {
+        if (server != null) return // 幂等：重复 startForegroundService/restart 不再起第二个实例
+        val port = SettingsRepository.get(this).serverPort
+        val webDir = runCatching { copyWebAssets() }
+            .onFailure { CrashLogger.logThrowable(it, "copy-web-assets") }
+            .getOrNull() ?: run {
+            SessionState.setConnStatus("error")
+            return
+        }
             val s = EmbeddedServer(TransferEngine.hub, TransferEngine.fileStore, webDir,
                 onPortConflict = { p ->
                     // 可能从 IO 线程回调：Toast 切主线程，否则二次崩溃
@@ -128,7 +177,6 @@ class BridgeForegroundService : Service() {
                         }.onFailure { CrashLogger.logThrowable(it, "server-start-fallback 0.0.0.0") }
                     }
                 }
-        }
     }
 
     /** assets/pc-web → cacheDir/pc-web（Ktor staticFiles 需磁盘目录，整树递归拷贝）。
@@ -191,6 +239,13 @@ class BridgeForegroundService : Service() {
     }
 
     override fun onDestroy() {
+        netCallback?.let { cb ->
+            runCatching {
+                (getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager)
+                    ?.unregisterNetworkCallback(cb)
+            }
+        }
+        netCallback = null
         server?.stop()
         wakeLock?.takeIf { it.isHeld }?.release()
         TransferEngine.fileStore.clearAll() // 磁盘 0 残留（T28）

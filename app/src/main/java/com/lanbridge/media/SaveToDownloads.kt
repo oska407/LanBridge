@@ -17,8 +17,9 @@ import java.io.File
             val isImage = mime.startsWith("image/")
             val collection = if (isImage) MediaStore.Images.Media.EXTERNAL_CONTENT_URI
                              else MediaStore.Downloads.EXTERNAL_CONTENT_URI
-            val dir = if (isImage) Environment.DIRECTORY_PICTURES + "/LanBridge"
-                      else Environment.DIRECTORY_DOWNLOADS + "/LanBridge"
+            // 保存位置可在设置里改（v1.1.5）：RELATIVE_PATH 形如 Pictures/LanBridge
+            val repo = com.lanbridge.settings.SettingsRepository.get(context)
+            val dir = if (isImage) repo.saveDirImage else repo.saveDirFile
             // 优先用传输原文件名；剔除非法字符，空则回退本地缓存名
             val raw = (displayName ?: src.name)
                 .replace(Regex("[\\\\/:*?\"<>|]"), "_")

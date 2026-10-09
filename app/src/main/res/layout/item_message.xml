@@ -54,13 +54,32 @@
                 android:textIsSelectable="true"
                 android:visibility="gone" />
 
-            <ImageView
-                android:id="@+id/ivImage"
-                android:layout_width="200dp"
-                android:layout_height="200dp"
-                android:scaleType="centerCrop"
-                android:contentDescription="@null"
-                android:visibility="gone" />
+            <!-- 图片/视频预览：200dp 的 70% = 140dp（v1.1.5 双端统一缩小 30%） -->
+            <FrameLayout
+                android:id="@+id/imageWrap"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone">
+
+                <ImageView
+                    android:id="@+id/ivImage"
+                    android:layout_width="140dp"
+                    android:layout_height="140dp"
+                    android:scaleType="centerCrop"
+                    android:contentDescription="@null" />
+
+                <!-- 视频播放角标：仅视频消息显示，点击用系统播放器打开 -->
+                <TextView
+                    android:id="@+id/tvPlay"
+                    android:layout_width="140dp"
+                    android:layout_height="140dp"
+                    android:gravity="center"
+                    android:text="▶"
+                    android:textColor="@color/n_white"
+                    android:textSize="28sp"
+                    android:background="#33000000"
+                    android:visibility="gone" />
+            </FrameLayout>
 
             <LinearLayout
                 android:id="@+id/fileRow"
@@ -73,7 +92,7 @@
                     android:id="@+id/tvFileName"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:maxWidth="200dp"
+                    android:maxWidth="140dp"
                     android:textColor="@color/semantic_link"
                     android:textSize="@dimen/font_body" />
 
