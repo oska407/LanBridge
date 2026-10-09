@@ -22,7 +22,9 @@ body {
   padding: 0 16px; background: var(--n-surface); border-bottom: 1px solid var(--n-divider);
   flex: none;
 }
-.brand { font-size: 16px; font-weight: 700; }
+.brand { font-size: 16px; font-weight: 700; display: inline-flex; align-items: center; }
+/* 标题栏 logo（v1.1.5 换用户提供的气泡图） */
+.brandLogo { width: 24px; height: 24px; border-radius: 6px; margin-right: 7px; object-fit: cover; }
 #conn { display: flex; align-items: center; gap: 6px; color: var(--text-2); }
 .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 .dot.on { background: var(--green-500); }
