@@ -7,6 +7,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.lanbridge.R
@@ -60,22 +61,29 @@ class GalleryAdapter(
 
     override fun onBindViewHolder(h: MediaVH, position: Int, payloads: MutableList<Any>) {
         if (payloads.isEmpty()) { bind(h, position); return }
-        val selected = store.isSelected(items[position].id)
-        h.viewMask.visibility = if (selected) View.VISIBLE else View.GONE
-        h.viewCircle.setBackgroundResource(
-            if (selected) R.drawable.bg_circle_checked else R.drawable.bg_circle_unchecked)
+        bindSelection(h, items[position].id)
     }
 
     override fun onBindViewHolder(h: MediaVH, position: Int) = bind(h, position)
+
+    /** 只刷新选中态：遮罩 + 圆点徽章（选中显示勾选顺序号，与微信一致），绝不重载缩略图 */
+    private fun bindSelection(h: MediaVH, id: Long) {
+        val selected = store.isSelected(id)
+        h.viewMask.visibility = if (selected) View.VISIBLE else View.GONE
+        if (selected) {
+            h.viewCircle.setBackgroundResource(R.drawable.bg_circle_checked)
+            h.viewCircle.text = (store.orderedIds.indexOf(id) + 1).toString()
+        } else {
+            h.viewCircle.setBackgroundResource(R.drawable.bg_circle_unchecked)
+            h.viewCircle.text = ""
+        }
+    }
 
     private fun bind(h: MediaVH, position: Int) {
         val item = items[position]
         h.mediaId = item.id
         ThumbLoader.load(h.ivThumb, item.uri, item.isVideo)
-        val selected = store.isSelected(item.id)
-        h.viewMask.visibility = if (selected) View.VISIBLE else View.GONE
-        h.viewCircle.setBackgroundResource(
-            if (selected) R.drawable.bg_circle_checked else R.drawable.bg_circle_unchecked)
+        bindSelection(h, item.id)
         // 首版：点格子或圆圈均可切换选中（预览页 P1 接入后改为点格=预览）
         h.itemView.setOnClickListener { onSingleClick?.invoke(position) }
     }
@@ -83,7 +91,7 @@ class GalleryAdapter(
     class MediaVH(v: View) : RecyclerView.ViewHolder(v) {
         val ivThumb: ImageView = v.findViewById(R.id.ivThumb)
         val viewMask: View = v.findViewById(R.id.viewMask)
-        val viewCircle: View = v.findViewById(R.id.viewCircle)
+        val viewCircle: TextView = v.findViewById(R.id.viewCircle)
         var mediaId: Long? = null
     }
 }

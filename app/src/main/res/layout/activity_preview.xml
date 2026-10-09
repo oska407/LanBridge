@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 预览页（微信样式，深色）：顶栏(返回 | i/N | 选择) + 大图翻页 + 缩略图条 + 底栏(原图 | 发送(N)) -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/n_bg">
+    android:background="#000000">
 
-    <!-- 顶部导航（二级页保留返回箭头） -->
     <LinearLayout
         android:id="@+id/titleBar"
         android:layout_width="match_parent"
@@ -16,7 +16,7 @@
         android:gravity="center_vertical"
         android:paddingHorizontal="8dp"
         android:paddingTop="8dp"
-        android:background="@color/n_surface">
+        android:background="#1A1A1A">
 
         <TextView
             android:id="@+id/btnBack"
@@ -24,48 +24,50 @@
             android:layout_height="48dp"
             android:gravity="center"
             android:text="←"
+            android:textColor="@color/n_white"
             android:textSize="@dimen/font_title"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/settings_title" />
 
         <TextView
+            android:id="@+id/tvIndex"
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="wrap_content"
-            android:text="@string/gallery_title"
-            android:textColor="@color/n_text_primary"
-            android:textSize="@dimen/font_title"
-            android:textStyle="bold" />
+            android:gravity="center"
+            android:textColor="@color/n_white"
+            android:textSize="16sp" />
 
         <TextView
-            android:id="@+id/tvTotal"
+            android:id="@+id/btnToggle"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textColor="@color/n_text_secondary"
-            android:textSize="@dimen/font_caption" />
+            android:layout_height="48dp"
+            android:gravity="center"
+            android:minWidth="72dp"
+            android:paddingHorizontal="8dp"
+            android:text="@string/preview_select"
+            android:textColor="@color/n_white"
+            android:textSize="@dimen/font_body"
+            android:background="?attr/selectableItemBackgroundBorderless" />
     </LinearLayout>
 
-    <!-- 划选提示条 -->
-    <TextView
-        android:id="@+id/tvHint"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingHorizontal="16dp"
-        android:paddingVertical="6dp"
-        android:text="@string/gallery_drag_hint"
-        android:textColor="@color/n_text_secondary"
-        android:textSize="@dimen/font_caption" />
-
     <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recycler"
+        android:id="@+id/pager"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:scrollbars="none" />
+        android:overScrollMode="never" />
 
-    <!-- 底部操作栏：预览(N) + 原图勾选 + 发送(N)
-         高度必须 wrap_content：导航栏弹出时 inset 加为 padding，栏体背景自动延伸到导航栏下方；
-         固定 56dp 会把内容挤压出可视区（v1.1.5 修复） -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/thumbs"
+        android:layout_width="match_parent"
+        android:layout_height="76dp"
+        android:paddingVertical="8dp"
+        android:paddingHorizontal="6dp"
+        android:clipToPadding="false"
+        android:background="#1A1A1A"
+        android:overScrollMode="never" />
+
     <LinearLayout
         android:id="@+id/bottomBar"
         android:layout_width="match_parent"
@@ -74,18 +76,7 @@
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:paddingHorizontal="16dp"
-        android:background="@color/n_surface">
-
-        <TextView
-            android:id="@+id/btnPreview"
-            android:layout_width="wrap_content"
-            android:layout_height="48dp"
-            android:gravity="center"
-            android:minWidth="72dp"
-            android:paddingHorizontal="8dp"
-            android:textColor="@color/n_text_primary"
-            android:textSize="@dimen/font_body"
-            android:background="?attr/selectableItemBackground" />
+        android:background="#1A1A1A">
 
         <CheckBox
             android:id="@+id/cbOriginal"
@@ -94,6 +85,7 @@
             android:layout_height="wrap_content"
             android:minHeight="48dp"
             android:text="@string/gallery_original"
+            android:textColor="@color/n_white"
             android:textSize="@dimen/font_body" />
 
         <TextView

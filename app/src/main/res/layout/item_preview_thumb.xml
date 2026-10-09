@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 预览页底部缩略图条单元：当前项由代码加绿色边框 -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/thumbRoot"
+    android:layout_width="60dp"
+    android:layout_height="60dp"
+    android:padding="3dp">
+
+    <ImageView
+        android:id="@+id/ivThumb"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:contentDescription="@null" />
+</FrameLayout>

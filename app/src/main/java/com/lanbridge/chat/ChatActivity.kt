@@ -100,15 +100,17 @@ class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Cal
         btnSend = findViewById(R.id.btnSend)
         etInput = findViewById(R.id.etInput)
 
-        // edge-to-edge：标题栏 top 内缩状态栏；根容器 bottom 内缩导航栏。
+        // edge-to-edge：标题栏 top 内缩状态栏；根容器 bottom 内缩导航栏/键盘（二者取并集）。
         // 仅对根容器统一加底部 inset —— 之前对 toolBar（仅48dp）单独加 bars.bottom+8 的
         // padding，在 3 按钮导航栏下该 padding 超过工具条高度，把 5 个按钮挤出可视区，
         // 表现即「安卓端缺少工具栏」。现改为根容器统一内缩，工具条/输入区均完整可见。
+        // v1.1.5：底部 inset 改 systemBars∪ime —— 导航栏显隐两种状态都跟随其上缘，
+        // 键盘弹出时输入区也随键盘上移（decorFitsSystemWindows(false) 下框架不再自动避让）。
         val rootView = findViewById<View>(R.id.root)
         ViewCompat.setOnApplyWindowInsetsListener(rootView) { _, insets ->
-            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            titleBar.updatePadding(top = bars.top + 8)
-            rootView.updatePadding(bottom = bars.bottom)
+            titleBar.updatePadding(top = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top + 8)
+            rootView.updatePadding(bottom = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.ime()).bottom)
             WindowInsetsCompat.CONSUMED
         }
 

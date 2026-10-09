@@ -1,6 +1,7 @@
 package com.lanbridge.gallery
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -8,6 +9,7 @@ import android.view.View
 import android.widget.CheckBox
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
@@ -37,9 +39,23 @@ class GalleryActivity : AppCompatActivity() {
     private lateinit var lm: LockableGridLM
     private lateinit var tvTotal: TextView
     private lateinit var btnSend: TextView
+    private lateinit var btnPreview: TextView
     private lateinit var titleBar: View
     private val buckets = mutableListOf<GalleryRepository.Bucket>()
     private var bucketIndex = 0
+    /** 全部已加载过的媒体项（跨相册/跨分页），发送与预览按 id 取 */
+    private val itemById = HashMap<Long, GalleryRepository.MediaItem>()
+
+    private val previewLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
+            if (r.resultCode == RESULT_OK) {
+                r.data?.let { d ->
+                    findViewById<CheckBox>(R.id.cbOriginal).isChecked =
+                        d.getBooleanExtra(PreviewActivity.RESULT_ORIGINAL, false)
+                    if (d.getBooleanExtra(PreviewActivity.RESULT_SEND, false)) send()
+                }
+            }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -61,14 +77,12 @@ class GalleryActivity : AppCompatActivity() {
         store.onLimitReached = { Toast.makeText(this, R.string.gallery_limit_reached, Toast.LENGTH_SHORT).show() } // AC6.4
         repo = GalleryRepository(this)
         adapter = GalleryAdapter(store)
-        adapter.onSelectionChanged = { n ->
-            btnSend.text = getString(R.string.gallery_send_n, n)
-            btnSend.isEnabled = n > 0
-        }
+        adapter.onSelectionChanged = { refreshSendUi() }
         adapter.onSingleClick = { pos -> toggleSingle(pos) } // 单击切换（AC6.3）
 
         val recycler = findViewById<RecyclerView>(R.id.recycler)
         lm = LockableGridLM(this, 4)
+        recycler.setHasFixedSize(true)
         recycler.layoutManager = lm
         recycler.adapter = adapter
         dragSelect = DragSelectHelper(recycler, store)
@@ -81,9 +95,19 @@ class GalleryActivity : AppCompatActivity() {
             }
         })
 
+        btnPreview = findViewById(R.id.btnPreview)
+        btnPreview.setOnClickListener {
+            if (store.size() == 0) return@setOnClickListener
+            PreviewActivity.store = store
+            PreviewActivity.itemMap = itemById
+            PreviewActivity.startOriginal = findViewById<CheckBox>(R.id.cbOriginal).isChecked
+            previewLauncher.launch(Intent(this, PreviewActivity::class.java))
+        }
+
         findViewById<View>(R.id.btnBack).setOnClickListener { finish() }
         findViewById<CheckBox>(R.id.cbOriginal).isChecked = SettingsRepository.get(this).sendOriginal
         btnSend.setOnClickListener { send() }
+        refreshSendUi() // 初始「发送(0)→发送」，避免 XML 里 %1$d 字面量露出
         findViewById<View>(R.id.tvHint).setOnLongClickListener {
             showBucketPicker(); true // 相册下拉：长按提示条切换（简化入口）
         }
@@ -91,6 +115,32 @@ class GalleryActivity : AppCompatActivity() {
 
         if (!ensurePermission()) return
         loadBuckets()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // 从预览页回来：勾选可能被右上角「选择」增删，徽章序号随之变化，局部刷新可见格
+        refreshSendUi()
+        val recycler = findViewById<RecyclerView>(R.id.recycler)
+        for (i in 0 until recycler.childCount) {
+            val pos = recycler.getChildAdapterPosition(recycler.getChildAt(i))
+            if (pos != RecyclerView.NO_POSITION) {
+                adapter.notifyItemChanged(pos, GalleryAdapter.PAYLOAD_SELECTION)
+            }
+        }
+    }
+
+    /** 底栏状态：发送/预览按钮的计数文案与可用态（0 张显示「发送/预览」并半透明禁用） */
+    private fun refreshSendUi() {
+        val n = if (this::store.isInitialized) store.size() else 0
+        btnSend.text = if (n > 0) getString(R.string.gallery_send_n, n) else getString(R.string.send)
+        btnSend.isEnabled = n > 0
+        btnSend.alpha = if (n > 0) 1f else 0.5f
+        if (this::btnPreview.isInitialized) {
+            btnPreview.text = getString(R.string.gallery_preview_n, n)
+            btnPreview.isEnabled = n > 0
+            btnPreview.alpha = if (n > 0) 1f else 0.5f
+        }
     }
 
     private fun ensurePermission(): Boolean {
@@ -129,6 +179,7 @@ class GalleryActivity : AppCompatActivity() {
         val b = buckets.getOrNull(bucketIndex) ?: return
         val page = repo.queryPage(b.id, pageOffset, 200)
         if (page.isEmpty()) return
+        page.forEach { itemById[it.id] = it } // 跨相册/分页累积，供预览与发送按 id 取
         adapter.submitPage(page, append = pageOffset > 0)
         pageOffset += page.size
     }
@@ -173,13 +224,9 @@ class GalleryActivity : AppCompatActivity() {
         if (store.size() == 0) return
         val files = ArrayList<String>()
         val names = ArrayList<String>()
-        // 发送顺序 = 勾选顺序（orderedIds）；映射回本地路径
-        val byId = HashMap<Long, GalleryRepository.MediaItem>()
-        for (i in 0 until adapter.itemCount) {
-            val it0 = adapter.itemAt(i); byId[it0.id] = it0
-        }
+        // 发送顺序 = 勾选顺序（orderedIds）；itemById 覆盖所有加载过的分页（含预览页里新勾的）
         store.orderedIds.forEach { id ->
-            byId[id]?.let { item ->
+            itemById[id]?.let { item ->
                 runCatching {
                     // 拷贝到应用缓存（零原图解码，流式拷贝）；内部名随机即可，传输/保存一律用原文件名
                     val out = java.io.File(cacheDir, "lanbridge_out/${System.currentTimeMillis()}_${id}.${extFromMime(item.mime)}")

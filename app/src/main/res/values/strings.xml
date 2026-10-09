@@ -29,6 +29,9 @@
     <string name="gallery_drag_hint">按住图片并滑动，可连续多选（≤100）</string>
     <string name="gallery_original">原图</string>
     <string name="gallery_send_n">发送(%1$d)</string>
+    <string name="gallery_preview_n">预览(%1$d)</string>
+    <string name="preview_select">选择</string>
+    <string name="preview_index">%1$d/%2$d</string>
     <string name="gallery_limit_reached">最多选择 100 张</string>
     <string name="settings_title">设置</string>
     <string name="settings_group_connection">连接</string>

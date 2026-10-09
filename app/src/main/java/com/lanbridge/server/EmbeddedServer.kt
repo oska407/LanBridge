@@ -80,7 +80,7 @@ class EmbeddedServer(
         get("/api/info") {
             val json = JSONObject()
                 .put("ip", host).put("deviceName", SessionState.deviceName)
-                .put("selfUrl", selfUrl()).put("version", "1.1.4")
+                .put("selfUrl", selfUrl()).put("version", "1.1.5")
             call.respondText(json.toString(), ContentType.Application.Json)
         }
 
