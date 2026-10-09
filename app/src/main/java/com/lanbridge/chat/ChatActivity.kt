@@ -32,6 +32,7 @@ import com.lanbridge.server.SessionState
 import com.lanbridge.server.TransferEngine
 import com.lanbridge.service.BridgeForegroundService
 import com.lanbridge.settings.SettingsActivity
+import com.lanbridge.util.CrashLogger
 import com.lanbridge.wechat.InboundCopier
 import com.lanbridge.wechat.OutboundShare
 import kotlinx.coroutines.launch
@@ -147,6 +148,31 @@ class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Cal
         findViewById<View>(R.id.btnDeleteBatch).setOnClickListener { batchDelete() }
 
         BridgeForegroundService.start(this)
+
+        // 崩溃诊断：上次异常退出/记录的堆栈弹窗展示，支持一键复制回传
+        CrashLogger.latest(this)?.let { showCrashReport(it) }
+    }
+
+    private fun showCrashReport(trace: String) {
+        val tv = TextView(this).apply {
+            text = trace
+            textSize = 11f
+            setTextIsSelectable(true)
+            setPadding(48, 24, 48, 24)
+        }
+        val scroll = android.widget.ScrollView(this).apply { addView(tv) }
+        AlertDialog.Builder(this)
+            .setTitle("检测到上次运行异常")
+            .setView(scroll)
+            .setPositiveButton("复制日志") { _, _ ->
+                val cm = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+                cm.setPrimaryClip(ClipData.newPlainText("lanbridge_crash", trace))
+                Toast.makeText(this, "已复制，请粘贴发送给开发者", Toast.LENGTH_LONG).show()
+                CrashLogger.clear(this)
+            }
+            .setNegativeButton("关闭并清除") { _, _ -> CrashLogger.clear(this) }
+            .setNeutralButton("仅关闭", null)
+            .show()
     }
 
     private fun syncHeader() {

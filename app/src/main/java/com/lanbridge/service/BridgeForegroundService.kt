@@ -19,7 +19,9 @@ import com.lanbridge.server.FileStore
 import com.lanbridge.server.SessionState
 import com.lanbridge.server.TransferEngine
 import com.lanbridge.settings.SettingsRepository
+import com.lanbridge.util.CrashLogger
 import com.lanbridge.util.HotspotIp
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -32,7 +34,8 @@ import java.io.File
  */
 class BridgeForegroundService : Service() {
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO +
+        CoroutineExceptionHandler { _, e -> CrashLogger.logThrowable(e, "service-scope") })
     private var server: EmbeddedServer? = null
     private var wakeLock: PowerManager.WakeLock? = null
 
@@ -57,7 +60,15 @@ class BridgeForegroundService : Service() {
             ACTION_STOP -> { stopSelf(); return START_NOT_STICKY }
             ACTION_COPY_LINK -> { copyLink(); return START_STICKY }
         }
-        startForeground(NOTIF_ID, buildNotification(waiting = true))
+        // Android 14 上 startForeground 类型校验失败会直接抛异常带崩进程：
+        // 先落盘记录根因再停服，避免"屡次停止运行"却查无日志
+        try {
+            startForeground(NOTIF_ID, buildNotification(waiting = true))
+        } catch (e: Throwable) {
+            CrashLogger.logThrowable(e, "start-foreground")
+            stopSelf()
+            return START_NOT_STICKY
+        }
         startServer()
         return START_STICKY
     }
@@ -67,14 +78,22 @@ class BridgeForegroundService : Service() {
         val ip = HotspotIp.get(this)
         val port = SettingsRepository.get(this).serverPort
         scope.launch {
-            val webDir = copyWebAssets()
+            val webDir = runCatching { copyWebAssets() }
+                .onFailure { CrashLogger.logThrowable(it, "copy-web-assets") }
+                .getOrNull() ?: run {
+                SessionState.setConnStatus("error")
+                return@launch
+            }
             val s = EmbeddedServer(TransferEngine.hub, TransferEngine.fileStore, webDir,
                 onPortConflict = { p ->
-                    SessionState.setConnStatus("error")
-                    android.widget.Toast.makeText(
-                        this@BridgeForegroundService,
-                        getString(R.string.port_occupied, p), android.widget.Toast.LENGTH_LONG
-                    ).show()
+                    // 可能从 IO 线程回调：Toast 必须切主线程，否则二次崩溃
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        SessionState.setConnStatus("error")
+                        android.widget.Toast.makeText(
+                            this@BridgeForegroundService,
+                            getString(R.string.port_occupied, p), android.widget.Toast.LENGTH_LONG
+                        ).show()
+                    }
                 })
             runCatching { s.start(ip, port) }
                 .onSuccess {
@@ -84,6 +103,7 @@ class BridgeForegroundService : Service() {
                     acquireWake()
                     updateNotification()
                 }
+                .onFailure { CrashLogger.logThrowable(it, "server-start ip=$ip port=$port") }
         }
     }
 
