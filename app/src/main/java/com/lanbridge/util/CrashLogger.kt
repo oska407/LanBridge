@@ -37,6 +37,20 @@ object CrashLogger {
         runCatching { append("[$tag]\n${stackOf(e)}") }
     }
 
+    /**
+     * 诊断日志（独立文件 lanbridge_diag.log，不与崩溃日志混用，
+     * 避免启动弹窗把诊断信息当"异常"误报）。超 256KB 自动清空重写。
+     */
+    fun log(tag: String, message: String) {
+        runCatching {
+            val ctx = appCtx ?: return
+            val f = File(ctx.getExternalFilesDir(null) ?: ctx.filesDir, "lanbridge_diag.log")
+            if (f.length() > 256 * 1024) f.delete()
+            val ts = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())
+            f.appendText("$ts [$tag] $message\n")
+        }
+    }
+
     /** 读取最近一次记录（无则返回 null） */
     fun latest(ctx: Context): String? {
         val f = file(ctx)

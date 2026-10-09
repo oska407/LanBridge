@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- 工具条按钮：≥48dp 热区 + ripple（T10D） -->
+    <!-- 工具条按钮：≥48dp 热区 + ripple（T10D）；emoji+文字标签（防个别机型 emoji 不渲染显空白） -->
     <style name="ToolItem">
         <item name="android:layout_width">0dp</item>
         <item name="android:layout_height">48dp</item>
         <item name="android:layout_weight">1</item>
         <item name="android:gravity">center</item>
-        <item name="android:textSize">20sp</item>
+        <item name="android:textSize">13sp</item>
         <item name="android:background">?attr/selectableItemBackgroundBorderless</item>
         <item name="android:clickable">true</item>
         <item name="android:focusable">true</item>

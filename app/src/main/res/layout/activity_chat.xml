@@ -147,11 +147,11 @@
         android:orientation="horizontal"
         android:background="@color/n_surface">
 
-        <TextView android:id="@+id/btnFile" style="@style/ToolItem" android:text="📁" android:contentDescription="@string/toolbar_send_file" />
-        <TextView android:id="@+id/btnPhoto" style="@style/ToolItem" android:text="🖼" android:contentDescription="@string/toolbar_send_photo" />
-        <TextView android:id="@+id/btnShot" style="@style/ToolItem" android:text="✂" android:contentDescription="@string/toolbar_screenshot" />
-        <TextView android:id="@+id/btnSettings" style="@style/ToolItem" android:text="⚙" android:contentDescription="@string/toolbar_settings" />
-        <TextView android:id="@+id/btnClear" style="@style/ToolItem" android:text="🗑" android:textColor="@color/danger_text" android:contentDescription="@string/toolbar_clear" />
+        <TextView android:id="@+id/btnFile" style="@style/ToolItem" android:text="📁 发文件" android:contentDescription="@string/toolbar_send_file" />
+        <TextView android:id="@+id/btnPhoto" style="@style/ToolItem" android:text="🖼 发照片" android:contentDescription="@string/toolbar_send_photo" />
+        <TextView android:id="@+id/btnShot" style="@style/ToolItem" android:text="✂ 截屏" android:contentDescription="@string/toolbar_screenshot" />
+        <TextView android:id="@+id/btnSettings" style="@style/ToolItem" android:text="⚙ 设置" android:contentDescription="@string/toolbar_settings" />
+        <TextView android:id="@+id/btnClear" style="@style/ToolItem" android:text="🗑 清空" android:textColor="@color/danger_text" android:contentDescription="@string/toolbar_clear" />
     </LinearLayout>
 
     <!-- 发送窗口：输入区 + 发送按钮 -->

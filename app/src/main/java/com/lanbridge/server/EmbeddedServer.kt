@@ -4,6 +4,7 @@ import com.lanbridge.model.WsMsg
 import com.lanbridge.util.CrashLogger
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.server.application.ApplicationCallPipeline
 import io.ktor.server.application.call
 import io.ktor.server.application.install
 import io.ktor.server.cio.CIO
@@ -52,6 +53,11 @@ class EmbeddedServer(
         try {
             engine = embeddedServer(CIO, port = port, host = ip) {
                 install(WebSockets)
+                // 静态资源/页面一律禁缓存：浏览器不拿旧 HTML/JS/CSS，
+                // 前端修复（如断连条配色）刷新页面即生效，无需清浏览器缓存
+                intercept(ApplicationCallPipeline.Plugins) {
+                    call.response.header("Cache-Control", "no-store, must-revalidate")
+                }
                 routing { routes() }
             }.also { it.start(wait = false) }
         } catch (e: BindException) {
@@ -74,11 +80,12 @@ class EmbeddedServer(
         get("/api/info") {
             val json = JSONObject()
                 .put("ip", host).put("deviceName", SessionState.deviceName)
-                .put("selfUrl", selfUrl()).put("version", "1.0.0")
+                .put("selfUrl", selfUrl()).put("version", "1.1.0")
             call.respondText(json.toString(), ContentType.Application.Json)
         }
 
         webSocket("/ws") {
+            CrashLogger.log("ws", "客户端连接建立")
             hub.register(this, SessionState.deviceName, host)
             try {
                 for (frame in incoming) {
@@ -88,6 +95,7 @@ class EmbeddedServer(
                             is WsMsg.Ping -> send(Frame.Text(WsMsg.Pong(msg.id).toJson().toString()))
                             is WsMsg.Text -> {
                                 // PC→手机 文本消息入内存会话
+                                CrashLogger.log("ws-recv", "收到PC文本 len=${msg.text.length}")
                                 val m = com.lanbridge.model.Message(
                                     msg.msgId.ifEmpty { java.util.UUID.randomUUID().toString() },
                                     com.lanbridge.model.MsgType.TEXT, "pc", text = msg.text
@@ -96,7 +104,10 @@ class EmbeddedServer(
                             }
                             is WsMsg.FileMetaMsg -> {
                                 // PC 上传完成通告 → 自动落盘（F-20 AC4，无下载按钮）
-                                if (msg.from == "pc") TransferEngine.onIncomingFile(msg.meta)
+                                if (msg.from == "pc") {
+                                    CrashLogger.log("ws-recv", "收到PC文件 ${msg.meta.name} ${msg.meta.size}B")
+                                    TransferEngine.onIncomingFile(msg.meta)
+                                }
                             }
                             is WsMsg.FileReady -> {
                                 // 转发成功即清内部拷贝（F-20 AC12）

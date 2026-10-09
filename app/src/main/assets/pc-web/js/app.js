@@ -11,6 +11,7 @@ const MAX_BATCH = 500 * 1024 * 1024;
 
 let ws = null;
 let retries = 0;
+let lastPong = Date.now(); // 心跳存活时间戳（任意下行消息都算活）
 const queue = [];      // 串行上传队列
 let uploading = false;
 const attaches = [];   // 驻留附件（≤9）
@@ -20,6 +21,7 @@ function connect() {
   ws = new WebSocket(`ws://${location.host}/ws`);
   ws.onopen = () => { retries = 0; setStatus(true); $('banner').classList.add('hidden'); };
   ws.onmessage = (e) => {
+    lastPong = Date.now(); // 任意消息都证明链路存活
     let m; try { m = JSON.parse(e.data); } catch { return; }
     switch (m.type) {
       case 'text': addBubble({ from: m.from === 'phone' ? 'in' : 'out', kind: 'text', text: m.text }); break;
@@ -288,5 +290,14 @@ document.addEventListener('click', (e) => {
   }
 });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('ctxmenu').classList.add('hidden'); });
+
+// 心跳保活：每 10s ping 一次；>25s 无任何下行消息判定为僵尸连接，
+// 主动断开触发 onclose 重连（否则页面长期显示"已连接"但发消息石沉大海）
+setInterval(() => {
+  if (ws && ws.readyState === 1) {
+    if (Date.now() - lastPong > 25000) { try { ws.close(); } catch (e) {} return; }
+    send({ type: 'ping', id: crypto.randomUUID() });
+  }
+}, 10000);
 
 connect();
