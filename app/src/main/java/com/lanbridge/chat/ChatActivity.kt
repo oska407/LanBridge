@@ -247,11 +247,14 @@ class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Cal
         TransferEngine.publishFile(copied, name, mime, "file", false)
     }
 
-    /** 相册图片发送：非原图按设置压缩（F-06 AC4），视频/原图直传（F-20 AC1） */
+    /** 相册图片发送：非原图按设置压缩（F-06 AC4），视频/原图直传（F-20 AC1）。
+     *  name 现已带扩展名（GalleryActivity 拷贝时保留），据此推导正确的 kind/mime，
+     *  避免视频被当图片、以及下载丢后缀。 */
     private fun sendImageFile(src: java.io.File, original: Boolean) {
         val settings = com.lanbridge.settings.SettingsRepository.get(this)
         if (original || settings.compressMaxLongSide <= 0) {
-            TransferEngine.publishFile(src, src.name, "image/jpeg", "image", true)
+            val (kind, mime) = kindMimeFromName(src.name)
+            TransferEngine.publishFile(src, src.name, mime, kind, true)
             return
         }
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
@@ -259,7 +262,23 @@ class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Cal
                 src, settings.compressMaxLongSide, settings.compressQuality,
                 java.io.File(cacheDir, "lanbridge_out"))
             val f = out ?: src
-            TransferEngine.publishFile(f, f.name, "image/jpeg", "image", false)
+            val (kind, mime) = kindMimeFromName(f.name)
+            TransferEngine.publishFile(f, f.name, mime, kind, false)
+        }
+    }
+
+    /** 由文件名扩展名推导 kind/mime：图片→image/*，其余视频→video/*，兜底 image/jpeg */
+    private fun kindMimeFromName(name: String): Pair<String, String> {
+        val n = name.lowercase()
+        return when {
+            n.endsWith(".mp4") || n.endsWith(".3gp") || n.endsWith(".mkv") ||
+                n.endsWith(".webm") || n.endsWith(".mov") -> "video" to "video/mp4"
+            n.endsWith(".png") -> "image" to "image/png"
+            n.endsWith(".webp") -> "image" to "image/webp"
+            n.endsWith(".gif") -> "image" to "image/gif"
+            n.endsWith(".heic") || n.endsWith(".heif") -> "image" to "image/heic"
+            n.endsWith(".jpg") || n.endsWith(".jpeg") -> "image" to "image/jpeg"
+            else -> "image" to "image/jpeg"
         }
     }
 

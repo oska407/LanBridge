@@ -151,6 +151,23 @@ class GalleryActivity : AppCompatActivity() {
             }.show()
     }
 
+    /** 由 MIME 推导扩展名：缓存文件名带扩展名，网页下载才不丢后缀（默认 jpg） */
+    private fun extFromMime(mime: String): String = when {
+        mime.equals("image/png", true) -> "png"
+        mime.equals("image/webp", true) -> "webp"
+        mime.equals("image/gif", true) -> "gif"
+        mime.equals("image/heic", true) || mime.equals("image/heif", true) -> "heic"
+        mime.startsWith("video/", true) -> when {
+            mime.contains("3gp", true) -> "3gp"
+            mime.contains("mkv", true) -> "mkv"
+            mime.contains("webm", true) -> "webm"
+            mime.contains("mov", true) -> "mov"
+            else -> "mp4"
+        }
+        mime.startsWith("image/", true) -> "jpg"
+        else -> "bin"
+    }
+
     private fun send() {
         if (store.size() == 0) return
         val files = ArrayList<String>()
@@ -162,8 +179,8 @@ class GalleryActivity : AppCompatActivity() {
         store.orderedIds.forEach { id ->
             byId[id]?.let { item ->
                 runCatching {
-                    // 拷贝到应用缓存（零原图解码，流式拷贝）
-                    val out = java.io.File(cacheDir, "lanbridge_out/${System.currentTimeMillis()}_${id}")
+                    // 拷贝到应用缓存（零原图解码，流式拷贝）；保留原扩展名，否则网页端下载会丢后缀
+                    val out = java.io.File(cacheDir, "lanbridge_out/${System.currentTimeMillis()}_${id}.${extFromMime(item.mime)}")
                     out.parentFile?.mkdirs()
                     contentResolver.openInputStream(item.uri)?.use { ins ->
                         out.outputStream().use { ins.copyTo(it) }

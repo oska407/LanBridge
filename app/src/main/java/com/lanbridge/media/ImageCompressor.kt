@@ -34,7 +34,8 @@ object ImageCompressor {
         } else bmp
 
         outDir.mkdirs()
-        val out = File(outDir, "c_${System.currentTimeMillis()}_${src.name}")
+        // 压缩产物恒为 JPEG，文件名强制 .jpg（继承 src.name 可能带原图 .png 后缀，与内容不符）
+        val out = File(outDir, "c_${System.currentTimeMillis()}.jpg")
         val ok = scaled.compress(Bitmap.CompressFormat.JPEG, quality.coerceIn(1, 100), out.outputStream())
         if (scaled !== bmp) bmp.recycle()
         return if (ok) out else null
