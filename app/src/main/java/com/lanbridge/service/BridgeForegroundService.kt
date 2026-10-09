@@ -109,10 +109,12 @@ class BridgeForegroundService : Service() {
         }
     }
 
-    /** assets/pc-web → cacheDir/pc-web（Ktor staticFiles 需磁盘目录，整树递归拷贝） */
+    /** assets/pc-web → cacheDir/pc-web（Ktor staticFiles 需磁盘目录，整树递归拷贝）。
+     *  每次启动强制重新拷贝：版本升级若未卸载，旧 cacheDir/pc-web 会残留，
+     *  直接 return 会让旧 HTML/JS/CSS 继续被服务，导致修复（如断连条配色）不可见。 */
     private fun copyWebAssets(): File {
         val dir = File(cacheDir, "pc-web")
-        if (dir.exists()) return dir
+        dir.deleteRecursively()
         dir.mkdirs()
         fun rec(path: String, out: File) {
             val list = assets.list(path).orEmpty()

@@ -94,13 +94,15 @@ class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Cal
         btnSend = findViewById(R.id.btnSend)
         etInput = findViewById(R.id.etInput)
 
-        // edge-to-edge：标题栏 top + 工具条/操作栏/输入区 三处 bottom（T10D，缺一不可）
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.root)) { _, insets ->
+        // edge-to-edge：标题栏 top 内缩状态栏；根容器 bottom 内缩导航栏。
+        // 仅对根容器统一加底部 inset —— 之前对 toolBar（仅48dp）单独加 bars.bottom+8 的
+        // padding，在 3 按钮导航栏下该 padding 超过工具条高度，把 5 个按钮挤出可视区，
+        // 表现即「安卓端缺少工具栏」。现改为根容器统一内缩，工具条/输入区均完整可见。
+        val rootView = findViewById<View>(R.id.root)
+        ViewCompat.setOnApplyWindowInsetsListener(rootView) { _, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             titleBar.updatePadding(top = bars.top + 8)
-            listOf(toolBar, selectionBar, selectionActionBar, composer).forEach {
-                it.updatePadding(bottom = bars.bottom + 8)
-            }
+            rootView.updatePadding(bottom = bars.bottom)
             WindowInsetsCompat.CONSUMED
         }
 
@@ -121,6 +123,8 @@ class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Cal
             }
         }
         syncHeader()
+        // 启动时显式同步一次工具条/输入区可见性（默认非多选 → 工具条/输入区可见）
+        syncSelectionUi()
 
         // 工具条（五项）
         findViewById<View>(R.id.btnFile).setOnClickListener {

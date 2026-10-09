@@ -1,6 +1,7 @@
 package com.lanbridge.server
 
 import com.lanbridge.model.WsMsg
+import com.lanbridge.util.CrashLogger
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.call
@@ -82,27 +83,32 @@ class EmbeddedServer(
             try {
                 for (frame in incoming) {
                     if (frame !is Frame.Text) continue
-                    when (val msg = WsMsg.parse(frame.readText())) {
-                        is WsMsg.Ping -> send(Frame.Text(WsMsg.Pong(msg.id).toJson().toString()))
-                        is WsMsg.Text -> {
-                            // PC→手机 文本消息入内存会话
-                            val m = com.lanbridge.model.Message(
-                                msg.msgId.ifEmpty { java.util.UUID.randomUUID().toString() },
-                                com.lanbridge.model.MsgType.TEXT, "pc", text = msg.text
-                            )
-                            SessionState.addMessage(m)
-                        }
-                        is WsMsg.FileMetaMsg -> {
-                            // PC 上传完成通告 → 自动落盘（F-20 AC4，无下载按钮）
-                            if (msg.from == "pc") TransferEngine.onIncomingFile(msg.meta)
-                        }
-                        is WsMsg.FileReady -> {
-                            // 转发成功即清内部拷贝（F-20 AC12）
-                            SessionState.transfers[msg.fileId]?.localPath?.let { p ->
-                                File(p).takeIf { it.exists() }?.delete()
+                    try {
+                        when (val msg = WsMsg.parse(frame.readText())) {
+                            is WsMsg.Ping -> send(Frame.Text(WsMsg.Pong(msg.id).toJson().toString()))
+                            is WsMsg.Text -> {
+                                // PC→手机 文本消息入内存会话
+                                val m = com.lanbridge.model.Message(
+                                    msg.msgId.ifEmpty { java.util.UUID.randomUUID().toString() },
+                                    com.lanbridge.model.MsgType.TEXT, "pc", text = msg.text
+                                )
+                                SessionState.addMessage(m)
                             }
+                            is WsMsg.FileMetaMsg -> {
+                                // PC 上传完成通告 → 自动落盘（F-20 AC4，无下载按钮）
+                                if (msg.from == "pc") TransferEngine.onIncomingFile(msg.meta)
+                            }
+                            is WsMsg.FileReady -> {
+                                // 转发成功即清内部拷贝（F-20 AC12）
+                                SessionState.transfers[msg.fileId]?.localPath?.let { p ->
+                                    File(p).takeIf { it.exists() }?.delete()
+                                }
+                            }
+                            else -> {}
                         }
-                        else -> {}
+                    } catch (e: Throwable) {
+                        // 单条消息异常不应中断整条 WS 连接，否则 PC→安卓 全部收不到
+                        CrashLogger.logThrowable(e, "ws-handle")
                     }
                 }
             } finally {

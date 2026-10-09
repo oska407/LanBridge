@@ -29,7 +29,7 @@ body {
 .dot.off { background: #bbb; }
 #peer { color: var(--text-2); font-size: 12px; }
 
-.banner { background: var(--danger-btn); color: #fff; padding: 8px 16px; flex: none; cursor: pointer; }
+.banner { background: #5C5C5C; color: #fff; padding: 8px 16px; flex: none; cursor: pointer; } /* 中性灰，不刺眼（办公室场景，F-20 反馈） */
 .hidden { display: none !important; }
 
 /* 气泡区：PC 保留滚动条（12px 占位式，Windows 习惯） */
