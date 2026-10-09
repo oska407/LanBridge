@@ -99,6 +99,7 @@ object TransferEngine {
             val msg = Message(UUID.randomUUID().toString(),
                 if (meta.kind == "image") MsgType.IMAGE else MsgType.FILE, "pc", fileRef = meta)
             SessionState.addMessage(msg)
+            SessionState.notifyIncoming(msg)
         })
     }
 

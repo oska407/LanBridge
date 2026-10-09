@@ -19,6 +19,7 @@ import com.google.android.material.switchmaterial.SwitchMaterial
 import com.lanbridge.R
 import com.lanbridge.server.SessionState
 import com.lanbridge.service.BridgeForegroundService
+import com.lanbridge.util.CrashLogger
 import com.lanbridge.util.HotspotIp
 import com.lanbridge.util.QrGenerator
 
@@ -105,7 +106,13 @@ class SettingsActivity : AppCompatActivity() {
             "清空传输临时文件 · 立即生效", Row.Kind.DANGER, onClick = { clearCache() }))
 
         rows.add(Row.Group(getString(R.string.settings_group_about)))
-        rows.add(Row.Item(getString(R.string.settings_group_about), getString(R.string.settings_version), "1.0.0"))
+        // 版本号必须真实：之前硬编码 1.0.0，导致无法判断手机上装的是哪个构建
+        val ver = runCatching { packageManager.getPackageInfo(packageName, 0).versionName }
+            .getOrDefault("未知")
+        rows.add(Row.Item(getString(R.string.settings_group_about), getString(R.string.settings_version),
+            "$ver · PC 网页标题栏显示的号码应与此一致"))
+        rows.add(Row.Item(getString(R.string.settings_group_about), "查看诊断日志",
+            "WS 收发记录：没有「收到PC文本」= 网页没发出来", Row.Kind.ACTION, onClick = { showDiag() }))
         rows.add(Row.Item(getString(R.string.settings_group_about), getString(R.string.settings_privacy),
             "🔒 不可关闭（隐私设计）"))
         adapter.notifyDataSetChanged()
@@ -177,6 +184,28 @@ class SettingsActivity : AppCompatActivity() {
                 dir.listFiles()?.forEach { it.delete() }
                 Toast.makeText(this, "已清空", Toast.LENGTH_SHORT).show()
             }.setNegativeButton(android.R.string.cancel, null).show()
+    }
+
+    /** 诊断日志：判定「手机收不到 PC 消息」到底断在服务端还是网页端 */
+    private fun showDiag() {
+        val tv = android.widget.TextView(this).apply {
+            text = CrashLogger.diagText(this@SettingsActivity)
+            textSize = 11f
+            setTextIsSelectable(true)
+            setPadding(32, 24, 32, 24)
+        }
+        val sv = android.widget.ScrollView(this).apply { addView(tv) }
+        AlertDialog.Builder(this)
+            .setTitle("诊断日志")
+            .setView(sv)
+            .setPositiveButton("复制") { _, _ ->
+                val cm = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                cm.setPrimaryClip(android.content.ClipData.newPlainText("lanbridge_diag", tv.text))
+                Toast.makeText(this, "已复制，请粘贴给开发者", Toast.LENGTH_LONG).show()
+            }
+            .setNegativeButton("清空") { _, _ -> CrashLogger.clearDiag(this) }
+            .setNeutralButton("关闭", null)
+            .show()
     }
 
     private fun showQr(url: String) {

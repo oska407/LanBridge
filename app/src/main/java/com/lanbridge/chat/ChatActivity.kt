@@ -55,6 +55,8 @@ class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Cal
     private lateinit var btnSend: TextView
     private lateinit var etInput: TextView
     private var pendingSendText: String? = null
+    private lateinit var msgListener: (List<Message>) -> Unit
+    private lateinit var incomingListener: (Message) -> Unit
 
     private val requestMedia =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -114,7 +116,8 @@ class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Cal
         recycler.isVerticalScrollBarEnabled = false // 安卓无滚动条（F-18 AC1）
 
         adapter.submit(SessionState.messages.toList())
-        SessionState.onMessagesChanged { list ->
+        // 监听器保存引用：onDestroy 必须反注册，否则页面重建后旧监听堆积、新消息可能被旧页吃掉
+        msgListener = { list ->
             runOnUiThread {
                 adapter.submit(list)
                 recycler.scrollToPosition((list.size - 1).coerceAtLeast(0))
@@ -122,6 +125,17 @@ class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Cal
                 syncHeader()
             }
         }
+        SessionState.onMessagesChanged(msgListener)
+
+        // PC 来消息即时反馈：有 Toast 但没气泡 = 显示层问题；连 Toast 都没有 = 服务端没收到
+        incomingListener = { m ->
+            runOnUiThread {
+                val tip = if (m.type == com.lanbridge.model.MsgType.TEXT) m.text
+                          else (m.fileRef?.name ?: "文件")
+                Toast.makeText(this, "收到 PC：$tip", Toast.LENGTH_SHORT).show()
+            }
+        }
+        SessionState.onIncoming(incomingListener)
         syncHeader()
         // 启动时显式同步一次工具条/输入区可见性（默认非多选 → 工具条/输入区可见）
         syncSelectionUi()
@@ -155,6 +169,22 @@ class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Cal
 
         // 崩溃诊断：上次异常退出/记录的堆栈弹窗展示，支持一键复制回传
         CrashLogger.latest(this)?.let { showCrashReport(it) }
+    }
+
+    /** 回到前台强制重绘一次：服务侧在后台入列的消息，即使错过刷新也不会"看不见" */
+    override fun onResume() {
+        super.onResume()
+        val list = SessionState.messages.toList()
+        adapter.submit(list)
+        recycler.scrollToPosition((list.size - 1).coerceAtLeast(0))
+        syncHeader()
+        syncSelectionUi()
+    }
+
+    override fun onDestroy() {
+        runCatching { SessionState.removeListener(msgListener) }
+        runCatching { SessionState.removeIncomingListener(incomingListener) }
+        super.onDestroy()
     }
 
     private fun showCrashReport(trace: String) {

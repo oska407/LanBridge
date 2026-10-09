@@ -51,6 +51,18 @@ object CrashLogger {
         }
     }
 
+    /** 读诊断日志尾部（设置页「查看诊断日志」用，免拔手机取文件） */
+    fun diagText(ctx: Context, maxBytes: Int = 8000): String {
+        val f = File(ctx.getExternalFilesDir(null) ?: ctx.filesDir, "lanbridge_diag.log")
+        if (!f.exists()) return "（暂无诊断日志：还没有任何 WS 活动记录）"
+        val text = runCatching { f.readText() }.getOrDefault("")
+        return if (text.length <= maxBytes) text else "…（仅显示末尾）\n" + text.substring(text.length - maxBytes)
+    }
+
+    fun clearDiag(ctx: Context) {
+        runCatching { File(ctx.getExternalFilesDir(null) ?: ctx.filesDir, "lanbridge_diag.log").delete() }
+    }
+
     /** 读取最近一次记录（无则返回 null） */
     fun latest(ctx: Context): String? {
         val f = file(ctx)

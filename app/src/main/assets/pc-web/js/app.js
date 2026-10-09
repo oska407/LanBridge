@@ -9,6 +9,22 @@ const $ = (id) => document.getElementById(id);
 const CHUNK = 1 << 20; // 1MB
 const MAX_BATCH = 500 * 1024 * 1024;
 
+/* 全局错误可见化（v1.1.2）：http 局域网页面里 crypto.randomUUID 之类的异常
+ * 以前只会静默吞掉——表现为"点了发送但什么都没发生"。现在一律弹顶部红条。 */
+function showError(msg) {
+  const b = $('banner');
+  if (!b) return;
+  b.textContent = '⚠ ' + msg + ' · 点击刷新页面（Ctrl+F5）';
+  b.onclick = () => location.reload();
+  b.style.background = '#C9302C';
+  b.classList.remove('hidden');
+}
+window.addEventListener('error', (e) => showError('脚本错误：' + (e.message || e.type)));
+window.addEventListener('unhandledrejection', (e) => {
+  const r = e.reason;
+  showError('异步错误：' + ((r && r.message) || r));
+});
+
 /* UUID 生成：crypto.randomUUID 仅 HTTPS/localhost（安全上下文）可用，
  * 本应用经 http://192.168.43.x:8080 访问属非安全上下文，该 API 不存在，
  * 直接调用会抛 TypeError 导致 PC 端所有发送（文字/照片/文件）静默失败。
@@ -63,21 +79,35 @@ function connect() {
   };
 }
 
+// 标题栏显示服务端版本号：一眼确认加载的是不是新前端（装了新 APK 但页面没刷新时最有用）
 function setStatus(on) {
   $('dot').className = `dot ${on ? 'on' : 'off'}`;
   $('connText').textContent = on ? '已连接' : '未连接';
-  fetch('/api/info').then(r => r.json()).then(d => { $('peer').textContent = `${d.deviceName} · ${d.ip}`; }).catch(() => {});
+  fetch('/api/info').then(r => r.json()).then(d => {
+    $('peer').textContent = `${d.deviceName} · ${d.ip}`;
+    const v = $('ver');
+    if (v) v.textContent = d.version ? `v${d.version}` : '';
+  }).catch(() => {});
 }
 
 function showBanner(text, onclick) {
   const b = $('banner');
   b.textContent = text;
   b.onclick = onclick;
+  b.style.background = ''; // 恢复中性灰（showError 会置红）
   b.classList.remove('hidden');
 }
 
+/** 发送：连不上/抛错一律可见，不再静默吞掉 */
 function send(obj) {
-  if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj));
+  try {
+    if (ws && ws.readyState === 1) { ws.send(JSON.stringify(obj)); return true; }
+  } catch (e) {
+    showError('发送异常：' + (e && e.message));
+    return false;
+  }
+  showError('未连接，消息未发出（看右上角状态灯，灰=没连上）');
+  return false;
 }
 
 /* ---------- 气泡渲染 ---------- */
@@ -131,28 +161,42 @@ function dlLink(m, text) {
 /* ---------- 发送（双通道） ---------- */
 async function sendTextNow(text) {
   if (!text) return;
-  const m = { from: 'out', kind: 'text', text };
-  addBubble(m);
-  send({ type: 'text', id: uuid(), from: 'pc', text });
+  try {
+    const m = { from: 'out', kind: 'text', text };
+    addBubble(m);
+    send({ type: 'text', id: uuid(), from: 'pc', text });
+  } catch (e) {
+    showError('发送文本失败：' + (e && e.message));
+  }
 }
 
 async function sendFiles(files) { // 直发通道：选完即发
-  const text = $('input').value.trim();
-  if (text) { await sendTextNow(text); $('input').value = ''; }
-  for (const f of files) {
-    if (f.size > MAX_BATCH) { alert('单文件/单批次上限 500MB，超出请分批'); continue; }
-    enqueue(f);
+  try {
+    const text = $('input').value.trim();
+    if (text) { await sendTextNow(text); $('input').value = ''; }
+    for (const f of files) {
+      if (f.size > MAX_BATCH) { alert('单文件/单批次上限 500MB，超出请分批'); continue; }
+      enqueue(f);
+    }
+    updateSendBtn();
+  } catch (e) {
+    showError('发送文件失败：' + (e && e.message));
   }
-  updateSendBtn();
 }
 
 function enqueue(file) {
-  const m = {
-    from: 'out', kind: file.type.startsWith('image/') ? 'image' : 'file',
-    id: uuid(), name: file.name, size: file.size, mime: file.type || 'application/octet-stream',
-  };
-  if (m.kind === 'image') m.data = URL.createObjectURL(file);
-  addBubble(m);
+  let m;
+  try {
+    m = {
+      from: 'out', kind: file.type.startsWith('image/') ? 'image' : 'file',
+      id: uuid(), name: file.name, size: file.size, mime: file.type || 'application/octet-stream',
+    };
+    if (m.kind === 'image') m.data = URL.createObjectURL(file);
+    addBubble(m);
+  } catch (e) {
+    showError('生成气泡失败：' + (e && e.message));
+    return;
+  }
   queue.push({ file, meta: m });
   pump();
 }
@@ -181,6 +225,7 @@ async function pump() { // 串行：并发=1（F-20 AC6）
            size: meta.size, chunkSize: CHUNK, totalChunks: total, kind: meta.kind === 'image' ? 'image' : 'file' });
   } catch (e) {
     markFailed(meta);
+    showError('上传失败：' + (e && e.message));
   }
   uploading = false;
   pump();

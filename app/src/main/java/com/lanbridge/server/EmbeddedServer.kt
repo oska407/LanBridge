@@ -80,7 +80,7 @@ class EmbeddedServer(
         get("/api/info") {
             val json = JSONObject()
                 .put("ip", host).put("deviceName", SessionState.deviceName)
-                .put("selfUrl", selfUrl()).put("version", "1.1.1")
+                .put("selfUrl", selfUrl()).put("version", "1.1.2")
             call.respondText(json.toString(), ContentType.Application.Json)
         }
 
@@ -101,6 +101,7 @@ class EmbeddedServer(
                                     com.lanbridge.model.MsgType.TEXT, "pc", text = msg.text
                                 )
                                 SessionState.addMessage(m)
+                                SessionState.notifyIncoming(m)
                             }
                             is WsMsg.FileMetaMsg -> {
                                 // PC 上传完成通告 → 自动落盘（F-20 AC4，无下载按钮）

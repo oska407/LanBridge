@@ -91,18 +91,24 @@ class GalleryActivity : AppCompatActivity() {
     }
 
     private fun ensurePermission(): Boolean {
-        val perm = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_IMAGES
-                   else Manifest.permission.READ_EXTERNAL_STORAGE
-        return if (ContextCompat.checkSelfPermission(this, perm) == PackageManager.PERMISSION_GRANTED) {
+        // Android 13+ 细分媒体权限：只请求图片会导致视频查询结果为空
+        val perms = if (Build.VERSION.SDK_INT >= 33)
+            arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO)
+        else
+            arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+        val missing = perms.filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+        return if (missing.isEmpty()) {
             true
         } else {
-            requestPermissions(arrayOf(perm), 1); false
+            requestPermissions(missing.toTypedArray(), 1); false
         }
     }
 
     override fun onRequestPermissionsResult(code: Int, perms: Array<String>, results: IntArray) {
         super.onRequestPermissionsResult(code, perms, results)
-        if (code == 1 && results.firstOrNull() == PackageManager.PERMISSION_GRANTED) loadBuckets()
+        if (code == 1 && results.isNotEmpty() && results.all { it == PackageManager.PERMISSION_GRANTED }) loadBuckets()
         else finish()
     }
 

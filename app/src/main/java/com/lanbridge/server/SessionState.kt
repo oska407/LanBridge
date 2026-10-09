@@ -27,8 +27,11 @@ object SessionState {
     val messages = Collections.synchronizedList(mutableListOf<Message>())
     val transfers = Collections.synchronizedMap(mutableMapOf<String, FileMeta>())
 
-    private val listeners = mutableListOf<(List<Message>) -> Unit>()
-    private val statusListeners = mutableListOf<() -> Unit>()
+    // 监听器列表：会被 Ktor IO 线程遍历、主线程增删，必须并发安全 + 单个失败不影响其它
+    private val listeners = java.util.concurrent.CopyOnWriteArrayList<(List<Message>) -> Unit>()
+    private val statusListeners = java.util.concurrent.CopyOnWriteArrayList<() -> Unit>()
+    /** PC 来消息回调（与列表刷新解耦，用于 Toast 等即时反馈） */
+    private val incomingListeners = java.util.concurrent.CopyOnWriteArrayList<(Message) -> Unit>()
 
     fun init(ctx: Context) {
         deviceName = android.os.Build.MODEL ?: "LanBridge"
@@ -85,8 +88,16 @@ object SessionState {
     fun onMessagesChanged(l: (List<Message>) -> Unit) { listeners.add(l) }
     fun removeListener(l: (List<Message>) -> Unit) { listeners.remove(l) }
 
+    fun onIncoming(l: (Message) -> Unit) { incomingListeners.add(l) }
+    fun removeIncomingListener(l: (Message) -> Unit) { incomingListeners.remove(l) }
+
+    /** PC 端来消息：列表刷新之外的即时反馈（Toast/通知），不计入 messages 变更 */
+    fun notifyIncoming(m: Message) {
+        incomingListeners.forEach { runCatching { it(m) } }
+    }
+
     fun notifyChanged() {
         val snapshot = synchronized(messages) { messages.toList() }
-        listeners.forEach { it(snapshot) }
+        listeners.forEach { runCatching { it(snapshot) } } // 单个监听异常不阻断其它监听
     }
 }
