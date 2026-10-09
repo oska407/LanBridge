@@ -13,6 +13,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
+import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import com.lanbridge.R
 import com.lanbridge.chat.ChatActivity
