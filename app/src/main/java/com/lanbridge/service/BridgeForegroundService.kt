@@ -10,6 +10,8 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import com.lanbridge.R
@@ -86,9 +88,9 @@ class BridgeForegroundService : Service() {
             }
             val s = EmbeddedServer(TransferEngine.hub, TransferEngine.fileStore, webDir,
                 onPortConflict = { p ->
-                    // 可能从 IO 线程回调：Toast 必须切主线程，否则二次崩溃
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                        SessionState.setConnStatus("error")
+                    // 可能从 IO 线程回调：Toast 切主线程，否则二次崩溃
+                    SessionState.setConnStatus("error")
+                    Handler(Looper.getMainLooper()).post {
                         android.widget.Toast.makeText(
                             this@BridgeForegroundService,
                             getString(R.string.port_occupied, p), android.widget.Toast.LENGTH_LONG
