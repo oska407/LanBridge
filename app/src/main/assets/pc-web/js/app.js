@@ -279,7 +279,6 @@ $('btnPhoto').onclick = () => $('photoInput').click();
 $('fileInput').onchange = (e) => { sendFiles([...e.target.files]); e.target.value = ''; };   // 直发
 $('photoInput').onchange = (e) => { sendFiles([...e.target.files]); e.target.value = ''; };  // 直发
 
-$('btnShot').onclick = () => alert('浏览器在 http 下禁用系统截屏：请用 PrintScreen 截图后回到本页 Ctrl+V 粘贴'); // F-09 降级
 $('btnClear').onclick = () => {
   if (!confirm('将清空所有消息（保留连接地址），且记录不会保存。确定？')) return; // 二次确认（F-19 AC3）
   document.querySelectorAll('.row').forEach(r => r.remove());

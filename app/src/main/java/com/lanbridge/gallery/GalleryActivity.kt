@@ -48,9 +48,11 @@ class GalleryActivity : AppCompatActivity() {
         titleBar = findViewById(R.id.titleBar)
         tvTotal = findViewById(R.id.tvTotal)
         btnSend = findViewById(R.id.btnSend)
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.titleBar)) { _, insets ->
+        val bottomBar = findViewById<View>(R.id.bottomBar)
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.root)) { _, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             titleBar.updatePadding(top = bars.top + 8)
+            bottomBar.updatePadding(bottom = bars.bottom)
             WindowInsetsCompat.CONSUMED
         }
 

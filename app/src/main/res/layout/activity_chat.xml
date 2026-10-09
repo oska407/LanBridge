@@ -139,7 +139,7 @@
             android:background="@drawable/bg_btn_primary" />
     </LinearLayout>
 
-    <!-- 工具条（安卓五项：发文件/发照片/截屏/设置/清空，末位标红） -->
+    <!-- 工具条（安卓四项：发文件/发照片/设置/清空，末位标红） -->
     <LinearLayout
         android:id="@+id/toolBar"
         android:layout_width="match_parent"
@@ -149,7 +149,6 @@
 
         <TextView android:id="@+id/btnFile" style="@style/ToolItem" android:text="📁 发文件" android:contentDescription="@string/toolbar_send_file" />
         <TextView android:id="@+id/btnPhoto" style="@style/ToolItem" android:text="🖼 发照片" android:contentDescription="@string/toolbar_send_photo" />
-        <TextView android:id="@+id/btnShot" style="@style/ToolItem" android:text="✂ 截屏" android:contentDescription="@string/toolbar_screenshot" />
         <TextView android:id="@+id/btnSettings" style="@style/ToolItem" android:text="⚙ 设置" android:contentDescription="@string/toolbar_settings" />
         <TextView android:id="@+id/btnClear" style="@style/ToolItem" android:text="🗑 清空" android:textColor="@color/danger_text" android:contentDescription="@string/toolbar_clear" />
     </LinearLayout>

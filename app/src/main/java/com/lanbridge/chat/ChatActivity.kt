@@ -39,7 +39,7 @@ import kotlinx.coroutines.launch
 
 /**
  * 聊天页（T10）：根页面无返回箭头、锁竖屏、edge-to-edge 三处 bottom inset、
- * 工具条五项（发文件/发照片/截屏/设置/清空，清空末位标红 + 二次确认）。
+ * 工具条四项（发文件/发照片/设置/清空，清空末位标红 + 二次确认）。
  */
 class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Callbacks {
 
@@ -146,9 +146,6 @@ class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Cal
             pickFiles.launch(arrayOf("*/*"))
         }
         findViewById<View>(R.id.btnPhoto).setOnClickListener { checkMediaThenGallery() }
-        findViewById<View>(R.id.btnShot).setOnClickListener {
-            Toast.makeText(this, "App 内截屏为后续版本能力，请用系统截图后从相册发送", Toast.LENGTH_SHORT).show() // F-12 P2
-        }
         findViewById<View>(R.id.btnSettings).setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
         }

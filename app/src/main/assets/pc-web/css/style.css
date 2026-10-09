@@ -63,7 +63,7 @@ body {
 .time { text-align: center; color: var(--text-2); font-size: 12px; margin: 10px 0; }
 .check { margin-right: 8px; transform: scale(1.2); vertical-align: middle; }
 
-/* 工具条 48px，四项固定，清空末位标红 */
+/* 工具条 48px，三项固定，清空末位标红 */
 #toolbar {
   height: 48px; flex: none; display: flex; align-items: center;
   background: var(--n-surface); border-top: 1px solid var(--n-divider); padding: 0 8px;
