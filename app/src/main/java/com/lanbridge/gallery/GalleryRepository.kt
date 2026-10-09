@@ -1,8 +1,10 @@
 package com.lanbridge.gallery
 
+import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.Context
 import android.net.Uri
+import android.os.Bundle
 import android.provider.MediaStore
 
 /**
@@ -39,7 +41,9 @@ class GalleryRepository(private val ctx: Context) {
             map.map { Bucket(it.key, it.value.first, it.value.second) }
     }
 
-    /** 分页查询（bucketId = -1 表示全部图文视频） */
+    /** 分页查询（bucketId = -1 表示全部图文视频）。
+     *  分页必须用 Bundle 的 QUERY_ARG_LIMIT/OFFSET（API 26+），
+     *  绝不能把 LIMIT 写进 sortOrder——新版 MediaStore 会抛 "Invalid token LIMIT"。 */
     fun queryPage(bucketId: Long, offset: Int, limit: Int = 200): List<MediaItem> {
         val out = mutableListOf<MediaItem>()
         val projection = arrayOf(
@@ -48,19 +52,25 @@ class GalleryRepository(private val ctx: Context) {
             MediaStore.MediaColumns.MIME_TYPE
         )
         listOf(imageUri to false, videoUri to true).forEach { (uri, isVideo) ->
-            if (bucketId != -1L) {
-                val sel = "${MediaStore.MediaColumns.BUCKET_ID}=?"
-                ctx.contentResolver.query(uri, projection, sel,
-                    arrayOf("$bucketId"),
-                    "${MediaStore.MediaColumns.DATE_ADDED} DESC LIMIT $limit OFFSET $offset"
-                )?.use { c -> collect(c, out, isVideo) }
-            } else {
-                ctx.contentResolver.query(uri, projection, null, null,
-                    "${MediaStore.MediaColumns.DATE_ADDED} DESC LIMIT $limit OFFSET $offset"
-                )?.use { c -> collect(c, out, isVideo) }
+            val args = Bundle().apply {
+                if (bucketId != -1L) {
+                    putString(ContentResolver.QUERY_ARG_SQL_SELECTION,
+                        "${MediaStore.MediaColumns.BUCKET_ID}=?")
+                    putStringArray(ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS,
+                        arrayOf("$bucketId"))
+                }
+                putStringArray(ContentResolver.QUERY_ARG_SORT_COLUMNS,
+                    arrayOf(MediaStore.MediaColumns.DATE_ADDED))
+                putInt(ContentResolver.QUERY_ARG_SORT_DIRECTION,
+                    ContentResolver.QUERY_ARG_SORT_DIRECTION_DESCENDING)
+                putInt(MediaStore.QUERY_ARG_LIMIT, limit)
+                putInt(MediaStore.QUERY_ARG_OFFSET, offset)
+            }
+            ctx.contentResolver.query(uri, projection, args, null)?.use { c ->
+                collect(c, out, isVideo)
             }
         }
-        return out.sortedByDescending { it.id }.drop(offset.coerceAtMost(0))
+        return out.sortedByDescending { it.id }
     }
 
     private fun collect(c: android.database.Cursor, out: MutableList<MediaItem>, isVideo: Boolean) {
