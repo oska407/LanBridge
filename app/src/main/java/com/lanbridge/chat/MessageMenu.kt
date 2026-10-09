@@ -50,6 +50,7 @@ object MessageMenu {
             override fun getView(position: Int, convertView: View?, parent: android.view.ViewGroup): View {
                 val v = super.getView(position, convertView, parent) as View
                 val tv = v.findViewById<TextView>(android.R.id.text1)
+                tv.text = items[position].label // 必须显式设 label：ArrayAdapter 默认显示 Item.toString() 会出现「Item(label=...」
                 tv.textSize = 15f
                 when {
                     items[position].danger -> { tv.setTextColor(Color.parseColor("#C9302C")); v.setBackgroundColor(Color.WHITE) }
