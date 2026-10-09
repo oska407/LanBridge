@@ -267,7 +267,7 @@ class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Cal
         }
     }
 
-    /** 由文件名扩展名推导 kind/mime：图片→image/*，其余视频→video/*，兜底 image/jpeg */
+    /** 由文件名扩展名推导 kind/mime：图片按 image 系列、视频按 video 系列，兜底 image/jpeg */
     private fun kindMimeFromName(name: String): Pair<String, String> {
         val n = name.lowercase()
         return when {
