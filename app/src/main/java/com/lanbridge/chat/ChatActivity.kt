@@ -77,8 +77,12 @@ class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Cal
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
             val paths = r.data?.getStringArrayListExtra(GalleryActivity.RESULT_FILES) ?: return@registerForActivityResult
             val original = r.data?.getBooleanExtra(GalleryActivity.RESULT_ORIGINAL, false) ?: false
+            val names = r.data?.getStringArrayListExtra(GalleryActivity.RESULT_NAMES) ?: arrayListOf()
             pendingSendText?.let { TransferEngine.sendText(it); pendingSendText = null; etInput.text = "" }
-            paths.forEach { p -> sendImageFile(java.io.File(p), original) }
+            paths.forEachIndexed { i, p ->
+                val name = names.getOrNull(i) ?: java.io.File(p).name
+                sendImageFile(java.io.File(p), name, original)
+            }
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -248,13 +252,13 @@ class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Cal
     }
 
     /** 相册图片发送：非原图按设置压缩（F-06 AC4），视频/原图直传（F-20 AC1）。
-     *  name 现已带扩展名（GalleryActivity 拷贝时保留），据此推导正确的 kind/mime，
-     *  避免视频被当图片、以及下载丢后缀。 */
-    private fun sendImageFile(src: java.io.File, original: Boolean) {
+     *  originalName 为相册原文件名（MediaStore DISPLAY_NAME），全程透传，
+     *  传输名与保存名都不改；kind/mime 由原名扩展名推导，避免视频被当图片。 */
+    private fun sendImageFile(src: java.io.File, originalName: String, original: Boolean) {
         val settings = com.lanbridge.settings.SettingsRepository.get(this)
+        val (kind, mime) = kindMimeFromName(originalName)
         if (original || settings.compressMaxLongSide <= 0) {
-            val (kind, mime) = kindMimeFromName(src.name)
-            TransferEngine.publishFile(src, src.name, mime, kind, true)
+            TransferEngine.publishFile(src, originalName, mime, kind, true)
             return
         }
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
@@ -262,8 +266,8 @@ class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Cal
                 src, settings.compressMaxLongSide, settings.compressQuality,
                 java.io.File(cacheDir, "lanbridge_out"))
             val f = out ?: src
-            val (kind, mime) = kindMimeFromName(f.name)
-            TransferEngine.publishFile(f, f.name, mime, kind, false)
+            // 压缩后仍沿用原图文件名（用户要求传输/保存不改名），内容是否重编码由「原图」开关决定
+            TransferEngine.publishFile(f, originalName, mime, kind, false)
         }
     }
 
@@ -339,7 +343,7 @@ class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Cal
             msgs.forEach { m ->
                 m.fileRef?.localPath?.let { p ->
                     val f = java.io.File(p)
-                    if (f.exists() && SaveToDownloads.save(this@ChatActivity, f, m.fileRef!!.mime)) ok++
+                    if (f.exists() && SaveToDownloads.save(this@ChatActivity, f, m.fileRef!!.mime, m.fileRef!!.name)) ok++
                 }
             }
             runOnUiThread { Toast.makeText(this@ChatActivity, getString(R.string.save_ok) + " ($ok)", Toast.LENGTH_SHORT).show() }
@@ -392,7 +396,7 @@ class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Cal
         val f = java.io.File(path)
         if (!f.exists()) return
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
-            val ok = SaveToDownloads.save(this@ChatActivity, f, ref.mime)
+            val ok = SaveToDownloads.save(this@ChatActivity, f, ref.mime, ref.name)
             runOnUiThread {
                 Toast.makeText(this@ChatActivity,
                     if (ok) R.string.save_ok else R.string.send_failed, Toast.LENGTH_SHORT).show()

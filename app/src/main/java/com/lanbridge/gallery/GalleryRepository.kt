@@ -19,7 +19,7 @@ import android.provider.MediaStore
  */
 class GalleryRepository(private val ctx: Context) {
 
-    data class MediaItem(val id: Long, val uri: Uri, val isVideo: Boolean, val bucketId: Long, val mime: String)
+    data class MediaItem(val id: Long, val uri: Uri, val isVideo: Boolean, val bucketId: Long, val mime: String, val name: String)
     data class Bucket(val id: Long, val name: String, val count: Int)
 
     private val imageUri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
@@ -57,7 +57,8 @@ class GalleryRepository(private val ctx: Context) {
             MediaStore.MediaColumns._ID,
             "bucket_id", // Files 表在 API 28 即有此列；常量 MediaColumns.BUCKET_ID 是 API 29+
             MediaStore.MediaColumns.MIME_TYPE,
-            MediaStore.Files.FileColumns.MEDIA_TYPE
+            MediaStore.Files.FileColumns.MEDIA_TYPE,
+            MediaStore.MediaColumns.DISPLAY_NAME
         )
         val sel: String
         val selArgs: Array<String>
@@ -97,9 +98,10 @@ class GalleryRepository(private val ctx: Context) {
             val type = c.getInt(3)
             val isVideo = type == MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO
             val mime = c.getString(2) ?: if (isVideo) "video/mp4" else "image/jpeg"
+            val name = c.getString(4) ?: ""
             out.add(MediaItem(id, ContentUris.withAppendedId(
                 if (isVideo) MediaStore.Video.Media.EXTERNAL_CONTENT_URI
-                else MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id), isVideo, bucket, mime))
+                else MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id), isVideo, bucket, mime, name))
         }
     }
 }

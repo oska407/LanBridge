@@ -26,6 +26,7 @@ class GalleryActivity : AppCompatActivity() {
 
     companion object {
         const val RESULT_FILES = "result_files"
+        const val RESULT_NAMES = "result_names"
         const val RESULT_ORIGINAL = "result_original"
     }
 
@@ -171,6 +172,7 @@ class GalleryActivity : AppCompatActivity() {
     private fun send() {
         if (store.size() == 0) return
         val files = ArrayList<String>()
+        val names = ArrayList<String>()
         // 发送顺序 = 勾选顺序（orderedIds）；映射回本地路径
         val byId = HashMap<Long, GalleryRepository.MediaItem>()
         for (i in 0 until adapter.itemCount) {
@@ -179,18 +181,23 @@ class GalleryActivity : AppCompatActivity() {
         store.orderedIds.forEach { id ->
             byId[id]?.let { item ->
                 runCatching {
-                    // 拷贝到应用缓存（零原图解码，流式拷贝）；保留原扩展名，否则网页端下载会丢后缀
+                    // 拷贝到应用缓存（零原图解码，流式拷贝）；内部名随机即可，传输/保存一律用原文件名
                     val out = java.io.File(cacheDir, "lanbridge_out/${System.currentTimeMillis()}_${id}.${extFromMime(item.mime)}")
                     out.parentFile?.mkdirs()
                     contentResolver.openInputStream(item.uri)?.use { ins ->
                         out.outputStream().use { ins.copyTo(it) }
                     }
                     files.add(out.absolutePath)
+                    // 原文件名（MediaStore DISPLAY_NAME）全程透传，传输与保存都不改名
+                    val raw = item.name.ifBlank { "image_$id" }
+                        .replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                    names.add(if (raw.contains('.')) raw else "$raw.${extFromMime(item.mime)}")
                 }
             }
         }
         if (files.isEmpty()) return
         intent.putExtra(RESULT_FILES, files)
+        intent.putExtra(RESULT_NAMES, names)
         intent.putExtra(RESULT_ORIGINAL, findViewById<CheckBox>(R.id.cbOriginal).isChecked)
         setResult(RESULT_OK, intent)
         finish()
