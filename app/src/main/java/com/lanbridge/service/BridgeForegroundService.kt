@@ -105,7 +105,28 @@ class BridgeForegroundService : Service() {
                     acquireWake()
                     updateNotification()
                 }
-                .onFailure { CrashLogger.logThrowable(it, "server-start ip=$ip port=$port") }
+                .onFailure { e ->
+                    CrashLogger.logThrowable(e, "server-start ip=$ip port=$port")
+                    // 指定 IP 不是本机地址（热点没开 / 连的 WiFi 不是热点）时回退 0.0.0.0，
+                    // 至少服务能起来，用户可手动看手机 IP 访问；否则直接闪退。
+                    if (e is java.net.BindException) {
+                        runCatching {
+                            CrashLogger.log("server-start", "回退绑定 0.0.0.0:$port（原地址 $ip 不可绑）")
+                            s.start("0.0.0.0", port)
+                        }.onSuccess {
+                            server = s
+                            SessionState.selfUrl = "http://$ip:$port（如打不开请检查手机热点/WiFi 是否在同一局域网）"
+                            SessionState.setConnStatus("waiting")
+                            acquireWake()
+                            updateNotification()
+                            Handler(Looper.getMainLooper()).post {
+                                Toast.makeText(this@BridgeForegroundService,
+                                    "服务已启动，但绑定地址受限：$ip，已自动回退到所有网卡",
+                                    Toast.LENGTH_LONG).show()
+                            }
+                        }.onFailure { CrashLogger.logThrowable(it, "server-start-fallback 0.0.0.0") }
+                    }
+                }
         }
     }
 

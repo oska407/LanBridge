@@ -13,7 +13,22 @@ import java.net.NetworkInterface
 object HotspotIp {
 
     fun get(context: Context): String =
-        dhcpInfo(context) ?: networkInterface() ?: FALLBACK
+        networkInterface() ?: localDhcpInfo(context) ?: FALLBACK
+
+    /** 仅当 DhcpInfo 的 serverAddress 确实是本机网卡地址时才用，
+     * 否则手机连普通 WiFi 时会拿到路由器地址，导致 bind 失败（闪退）。 */
+    private fun localDhcpInfo(ctx: Context): String? {
+        val ip = dhcpInfo(ctx) ?: return null
+        return if (isLocalAddress(ip)) ip else null
+    }
+
+    private fun isLocalAddress(ip: String): Boolean = runCatching {
+        NetworkInterface.getNetworkInterfaces().asSequence()
+            .filter { it.isUp && !it.isLoopback }
+            .flatMap { it.inetAddresses.asSequence() }
+            .filterIsInstance<Inet4Address>()
+            .any { it.hostAddress == ip }
+    }.getOrDefault(false)
 
     private fun dhcpInfo(ctx: Context): String? = runCatching {
         val wm = ctx.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
