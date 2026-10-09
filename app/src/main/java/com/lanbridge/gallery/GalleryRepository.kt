@@ -59,12 +59,10 @@ class GalleryRepository(private val ctx: Context) {
                     putStringArray(ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS,
                         arrayOf("$bucketId"))
                 }
-                putStringArray(ContentResolver.QUERY_ARG_SORT_COLUMNS,
-                    arrayOf(MediaStore.MediaColumns.DATE_ADDED))
-                putInt(ContentResolver.QUERY_ARG_SORT_DIRECTION,
-                    ContentResolver.QUERY_ARG_SORT_DIRECTION_DESCENDING)
-                putInt(MediaStore.QUERY_ARG_LIMIT, limit)
-                putInt(MediaStore.QUERY_ARG_OFFSET, offset)
+                putString(ContentResolver.QUERY_ARG_SQL_SORT_ORDER,
+                    "${MediaStore.MediaColumns.DATE_ADDED} DESC")
+                putInt(ContentResolver.QUERY_ARG_LIMIT, limit)
+                putInt(ContentResolver.QUERY_ARG_OFFSET, offset)
             }
             ctx.contentResolver.query(uri, projection, args, null)?.use { c ->
                 collect(c, out, isVideo)
