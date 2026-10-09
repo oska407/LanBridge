@@ -11,6 +11,9 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import com.bumptech.glide.Glide
 import com.lanbridge.R
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import com.lanbridge.media.SaveToDownloads
 import com.lanbridge.model.Message
 import com.lanbridge.wechat.OutboundShare
@@ -65,7 +68,7 @@ class PhotoViewActivity : AppCompatActivity() {
         findViewById<View>(R.id.btnSave).setOnClickListener {
             val m2 = msg
             if (m2?.fileRef == null) { Toast.makeText(this, R.string.send_failed, Toast.LENGTH_SHORT).show(); return@setOnClickListener }
-            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            CoroutineScope(Dispatchers.IO).launch {
                 val ok = SaveToDownloads.save(this@PhotoViewActivity, File(path), m2.fileRef!!.mime, m2.fileRef!!.name)
                 runOnUiThread {
                     Toast.makeText(this@PhotoViewActivity,
