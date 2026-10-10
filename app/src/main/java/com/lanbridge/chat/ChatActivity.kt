@@ -53,6 +53,7 @@ class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Cal
     private lateinit var selectionBar: View
     private lateinit var selectionActionBar: View
     private lateinit var tvSelCount: TextView
+    private lateinit var btnSelAll: TextView
     private lateinit var btnSend: TextView
     private lateinit var etInput: TextView
     private var pendingSendText: String? = null
@@ -102,6 +103,7 @@ class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Cal
         selectionBar = findViewById(R.id.selectionBar)
         selectionActionBar = findViewById(R.id.selectionActionBar)
         tvSelCount = findViewById(R.id.tvSelCount)
+        btnSelAll = findViewById(R.id.btnSelAll)
         recycler = findViewById(R.id.recycler)
         btnSend = findViewById(R.id.btnSend)
         etInput = findViewById(R.id.etInput)
@@ -121,7 +123,9 @@ class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Cal
         }
 
         selection = SelectionController()
-        selection.onChanged = { syncSelectionUi() }
+        // v1.1.8：onChanged 必须同时刷新列表 —— 之前只切顶部/底部栏可见性，
+        // 结果进入多选后圆圈不出现、点选也不变色（列表根本没重绘）。
+        selection.onChanged = { syncSelectionUi(); refreshSelectionRows() }
         adapter = ChatAdapter(selection, this)
         recycler.layoutManager = LinearLayoutManager(this).apply { stackFromEnd = true }
         recycler.adapter = adapter
@@ -169,7 +173,7 @@ class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Cal
 
         // 多选操作栏
         findViewById<View>(R.id.btnSelExit).setOnClickListener { selection.exit() }
-        findViewById<View>(R.id.btnSelAll).setOnClickListener { selection.selectAll(SessionState.messages.toList()) }
+        btnSelAll.setOnClickListener { selection.toggleAll(SessionState.messages.toList()) }
         findViewById<View>(R.id.btnSaveBatch).setOnClickListener { batchSave() }
         findViewById<View>(R.id.btnForwardBatch).setOnClickListener { batchShare() }
         findViewById<View>(R.id.btnCopyBatch).setOnClickListener { batchCopy() }
@@ -341,18 +345,30 @@ class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Cal
 
     // ---- SelectionController UI（F-16 AC5） ----
     private fun syncSelectionUi() {
+        val msgs = SessionState.messages.toList()
         val inSel = selection.selectionMode
         selectionBar.visibility = if (inSel) View.VISIBLE else View.GONE
         selectionActionBar.visibility = if (inSel) View.VISIBLE else View.GONE
         toolBar.visibility = if (inSel) View.GONE else View.VISIBLE
         composer.visibility = if (inSel) View.GONE else View.VISIBLE
         tvSelCount.text = getString(R.string.selected_count, selection.selectedIds.size)
+        // 全选 ⇄ 取消全选：按钮文案跟随当前是否已全选
+        btnSelAll.text = getString(if (selection.isAllSelected(msgs)) R.string.select_none else R.string.select_all)
         val enabled = selection.selectedIds.isNotEmpty()
         val hasText = selectedMessages().any { it.type == com.lanbridge.model.MsgType.TEXT }
         findViewById<View>(R.id.btnSaveBatch).isEnabled = enabled
         findViewById<View>(R.id.btnForwardBatch).isEnabled = enabled
         findViewById<View>(R.id.btnCopyBatch).isEnabled = enabled && hasText
         findViewById<View>(R.id.btnDeleteBatch).isEnabled = enabled
+    }
+
+    /**
+     * 只重画选中态（payload 局部刷新）：不重绑气泡内容，避免图片闪烁与 Glide 重载。
+     * 这是「进入多选后圆圈才出现、点选才变色」的关键 —— 之前完全没发过这个通知。
+     */
+    private fun refreshSelectionRows() {
+        val n = adapter.itemCount
+        if (n > 0) adapter.notifyItemRangeChanged(0, n, SessionState.PAYLOAD_SELECTION)
     }
 
     private fun selectedMessages(): List<Message> =
@@ -482,7 +498,7 @@ class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Cal
         runCatching { startActivity(i) }
     }
 
-    override fun onMultiSelect(msg: Message) { selection.enter(); selection.toggle(msg) }
+    override fun onMultiSelect(msg: Message) { selection.enter(msg) } // 进入多选并默认勾选长按的那条（一次刷新）
 
     override fun onDelete(msg: Message) {
         synchronized(SessionState.messages) { SessionState.messages.remove(msg) }

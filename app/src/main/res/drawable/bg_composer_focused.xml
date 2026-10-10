@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 输入框聚焦态：仍是 1dp 细线，只在蓝阶上加深一档到 brand_400（浅蓝，不加粗） -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/n_white" />
+    <stroke android:width="1dp" android:color="@color/brand_400" />
+    <corners android:radius="12dp" />
+</shape>

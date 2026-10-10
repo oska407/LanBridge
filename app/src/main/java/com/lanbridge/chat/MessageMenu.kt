@@ -12,7 +12,7 @@ import com.lanbridge.model.MsgType
 
 /**
  * 长按菜单（T13/F-16 AC2~AC3）：ListPopupWindow 锚定气泡，按消息类型动态构建；
- * 「分享到微信」置顶浅绿高亮（本软件核心价值）、「删除」末位标红、高频在上。
+ * 「分享到微信」置顶浅蓝高亮（品牌 50 档底 + 品牌 700 字）、「删除」末位标红、高频在上。
  */
 object MessageMenu {
 
@@ -52,10 +52,15 @@ object MessageMenu {
                 val tv = v.findViewById<TextView>(android.R.id.text1)
                 tv.text = items[position].label // 必须显式设 label：ArrayAdapter 默认显示 Item.toString() 会出现「Item(label=...」
                 tv.textSize = 15f
+                // v1.1.8：改为读取 color token —— 之前三处硬编码 hex，品牌色迁移时必然漏改
+                val cDanger = androidx.core.content.ContextCompat.getColor(ctx, R.color.danger_text)
+                val cHighlight = androidx.core.content.ContextCompat.getColor(ctx, R.color.brand_700)
+                val cHighlightBg = androidx.core.content.ContextCompat.getColor(ctx, R.color.brand_50)
+                val cNormal = androidx.core.content.ContextCompat.getColor(ctx, R.color.n_text_primary)
                 when {
-                    items[position].danger -> { tv.setTextColor(Color.parseColor("#C9302C")); v.setBackgroundColor(Color.WHITE) }
-                    items[position].highlight -> { tv.setTextColor(Color.parseColor("#1D4ED8")); v.setBackgroundColor(Color.parseColor("#EAF2FE")) }
-                    else -> { tv.setTextColor(Color.parseColor("#1A1A1A")); v.setBackgroundColor(Color.WHITE) }
+                    items[position].danger -> { tv.setTextColor(cDanger); v.setBackgroundColor(Color.WHITE) }
+                    items[position].highlight -> { tv.setTextColor(cHighlight); v.setBackgroundColor(cHighlightBg) }
+                    else -> { tv.setTextColor(cNormal); v.setBackgroundColor(Color.WHITE) }
                 }
                 return v
             }

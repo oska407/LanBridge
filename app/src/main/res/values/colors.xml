@@ -1,12 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- 设计 Token（ARCHITECTURE.md §7，双端同源）
-         v1.1.7：品牌色由微信绿迁移至 logo 蓝系（#3B82F6），双端变量名同步为 brand_* -->
-    <!-- 品牌蓝（取自 logo 渐变主色） -->
-    <color name="brand_500">#3B82F6</color>
-    <color name="brand_600">#2563EB</color>
-    <color name="brand_700">#1D4ED8</color>  <!-- 实心承载白字用它（6.7:1 过 AA） -->
+    <!-- 设计 Token（ARCHITECTURE.md §7，双端同源 / PC 网页端 CSS 变量一一对应）
+         v1.1.8 蓝色统一：全端（安卓 XML + Kotlin + PC 网页）**只保留一支品牌蓝阶**。
+         此前混用了两套蓝 —— 品牌蓝 #3B82F6 系，加上继承自微信的灰蓝 #576B95
+         （安卓的 semantic_link / 网页的 link 变量，用于文件名、重发、菜单高亮），
+         同一界面里出现两种蓝。现在统一并入 brand_700，任何蓝都必须取下面蓝阶中的某一档。 -->
+
+    <!-- 品牌蓝阶（唯一蓝源，50 最浅 → 900 最深）
+         取自 logo 渐变主色；对比度（相对白底）：
+         brand_400 2.5:1 / brand_500 3.7:1 / brand_600 5.2:1 / brand_700 6.7:1（白字 6.7:1 过 AA） -->
     <color name="brand_50">#EAF2FE</color>
+    <color name="brand_100">#D6E9FF</color>
+    <color name="brand_200">#BFDBFE</color>
+    <color name="brand_300">#93C5FD</color>
+    <color name="brand_400">#60A5FA</color>
+    <color name="brand_500">#3B82F6</color>  <!-- 描边/进度/选中态（≥3:1，UI 组件安全） -->
+    <color name="brand_600">#2563EB</color>  <!-- 聚焦态描边、hover -->
+    <color name="brand_700">#1D4ED8</color>  <!-- 链接、文件名、按钮文字（正文级 4.5:1 达标） -->
+    <color name="brand_800">#1E40AF</color>
+    <color name="brand_900">#1E3A8A</color>
+
     <!-- 中性 -->
     <color name="n_white">#FFFFFF</color>
     <color name="n_bg">#EDEDED</color>
@@ -15,15 +28,20 @@
     <color name="n_scrollbar">#C8C8C8</color>
     <color name="n_text_secondary">#6B6B6B</color>
     <color name="n_text_primary">#1A1A1A</color>
+    <!-- 中性深墨（v1.1.7c）：主按钮（发送等）底色。
+         原 brand_700 蓝度过饱和且与 logo 背景撞色；白字对比度约 11:1，远超 AA 4.5:1。 -->
+    <color name="n_ink_700">#334155</color>
+
     <!-- 语义 -->
-    <color name="semantic_link">#576B95</color>
     <color name="danger_text">#C9302C</color>
     <color name="danger_btn">#FA5151</color>
     <color name="warn">#FF8F1F</color>
-    <!-- 聊天（发出气泡改为 logo 浅蓝，与品牌色协调；深色文字对比度充足） -->
-    <color name="bubble_out">#D6E9FF</color>
+
+    <!-- 聊天（发出气泡取品牌蓝 100 档，与品牌色同源；深色文字对比度充足） -->
+    <color name="bubble_out">@color/brand_100</color>
     <color name="bubble_in">#FFFFFF</color>
     <color name="chat_bg">#EDEDED</color>
-    <!-- 图标背景（自适应图标兜底色，取 logo 渐变中段蓝） -->
+
+    <!-- 启动器图标兜底色：取自 logo 渐变中段，属 logo 资产而非界面蓝，不并入蓝阶 -->
     <color name="ic_launcher_background">#45A2F4</color>
 </resources>

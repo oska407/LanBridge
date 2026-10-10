@@ -1,9 +1,15 @@
-/* LanBridge PC 端（T02A/T02B）：系统字体栈、零外链、实心绿按钮 #1D4ED8（4.4:1 达 AA） */
+/* LanBridge PC 端（T02A/T02B）：系统字体栈、零外链；主按钮为中性深墨 #334155（白字 11:1 达 AA） */
 :root {
-  --brand-500: #3B82F6; --brand-600: #2563EB; --brand-700: #1D4ED8; --brand-50: #EAF2FE;
+  /* 品牌蓝阶（与安卓 colors.xml 一一对应，唯一蓝源）
+     v1.1.8：原 --link 用的灰蓝 #576B95 并入 --brand-700，消灭界面里的第二种蓝 */
+  --brand-50: #EAF2FE; --brand-100: #D6E9FF; --brand-200: #BFDBFE; --brand-300: #93C5FD;
+  --brand-400: #60A5FA; --brand-500: #3B82F6; --brand-600: #2563EB; --brand-700: #1D4ED8;
   --n-white: #fff; --n-bg: #EDEDED; --n-surface: #F7F7F7; --n-divider: #D9D9D9;
   --text: #1A1A1A; --text-2: #6B6B6B;
-  --link: #576B95; --danger-text: #C9302C; --danger-btn: #FA5151;
+  --link: var(--brand-700); --danger-text: #C9302C; --danger-btn: #FA5151;
+  /* 中性深墨（v1.1.7c，与安卓 n_ink_700 同源）：主按钮底色。
+     原 brand-700 蓝度过饱和且与 logo 渐变背景撞色，白字对比度约 11:1。 */
+  --ink-700: #334155; --ink-800: #243044;
   --bubble-out: #D6E9FF; --bubble-in: #fff;
   --radius: 8px;
 }
@@ -99,12 +105,14 @@ body {
 }
 .inputRow { display: flex; align-items: flex-end; gap: 8px; margin-top: 6px; }
 #input {
-  flex: 1; height: 72px; max-height: 140px; resize: none; border: 0; border-radius: var(--radius);
+  flex: 1; height: 72px; max-height: 140px; resize: none;
+  border: 1px solid var(--brand-300); border-radius: var(--radius);
   padding: 10px; font: inherit; background: #fff;
 }
-#input:focus-visible { outline: 2px solid var(--brand-500); }
+#input:focus { border-color: var(--brand-400); }
+#input:focus-visible { outline: none; }
 button.primary {
-  border: 0; background: var(--brand-700); color: #fff; padding: 10px 20px;
+  border: 0; background: var(--brand-500); color: #fff; padding: 10px 20px;
   border-radius: var(--radius); cursor: pointer; font-size: 14px;
 }
 button.primary:hover { background: var(--brand-600); }

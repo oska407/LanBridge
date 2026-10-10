@@ -153,26 +153,45 @@
     </LinearLayout>
 
     <!-- 工具条（安卓四项：发文件/发照片/设置/清空，末位标红）
-         v1.1.7：emoji 图标 → 统一线性 vector（ic_tool_* / ic_trash），图标在上文字在下 -->
+         v1.1.7c：图标 + 文字改纵向容器（见 styles.xml ToolItem 注释），
+         容器高度 64dp，上下留白由容器精确控制，图标不再顶到上缘。 -->
     <LinearLayout
         android:id="@+id/toolBar"
         android:layout_width="match_parent"
         android:layout_height="@dimen/toolbar_height"
         android:orientation="horizontal"
+        android:gravity="center"
         android:background="@color/n_surface">
 
-        <TextView android:id="@+id/btnFile" style="@style/ToolItem"
-            android:drawableTop="@drawable/ic_tool_file"
-            android:text="@string/toolbar_send_file" android:contentDescription="@string/toolbar_send_file" />
-        <TextView android:id="@+id/btnPhoto" style="@style/ToolItem"
-            android:drawableTop="@drawable/ic_tool_photo"
-            android:text="@string/toolbar_send_photo" android:contentDescription="@string/toolbar_send_photo" />
-        <TextView android:id="@+id/btnSettings" style="@style/ToolItem"
-            android:drawableTop="@drawable/ic_tool_settings"
-            android:text="@string/toolbar_settings" android:contentDescription="@string/toolbar_settings" />
-        <TextView android:id="@+id/btnClear" style="@style/ToolItem"
-            android:drawableTop="@drawable/ic_trash"
-            android:text="@string/toolbar_clear" android:textColor="@color/danger_text" android:contentDescription="@string/toolbar_clear" />
+        <LinearLayout android:id="@+id/btnFile" style="@style/ToolItem">
+            <ImageView style="@style/ToolIcon"
+                android:src="@drawable/ic_tool_file"
+                android:contentDescription="@null" />
+            <TextView style="@style/ToolLabel" android:text="@string/toolbar_send_file" />
+        </LinearLayout>
+
+        <LinearLayout android:id="@+id/btnPhoto" style="@style/ToolItem">
+            <ImageView style="@style/ToolIcon"
+                android:src="@drawable/ic_tool_photo"
+                android:contentDescription="@null" />
+            <TextView style="@style/ToolLabel" android:text="@string/toolbar_send_photo" />
+        </LinearLayout>
+
+        <LinearLayout android:id="@+id/btnSettings" style="@style/ToolItem">
+            <ImageView style="@style/ToolIcon"
+                android:src="@drawable/ic_tool_settings"
+                android:contentDescription="@null" />
+            <TextView style="@style/ToolLabel" android:text="@string/toolbar_settings" />
+        </LinearLayout>
+
+        <LinearLayout android:id="@+id/btnClear" style="@style/ToolItem">
+            <ImageView style="@style/ToolIcon"
+                android:src="@drawable/ic_trash"
+                android:contentDescription="@null" />
+            <TextView style="@style/ToolLabel"
+                android:text="@string/toolbar_clear"
+                android:textColor="@color/danger_text" />
+        </LinearLayout>
     </LinearLayout>
 
     <!-- 发送窗口：输入区 + 发送按钮 -->
@@ -185,29 +204,43 @@
         android:padding="8dp"
         android:background="@color/n_surface">
 
-        <EditText
-            android:id="@+id/etInput"
+        <!-- 发送区（v1.1.7c）：发送按钮内嵌到输入框内部右下角，
+             尺寸 40dp 胶囊，不再与输入框并排等高；EditText 右侧留 88dp 内边距避让。 -->
+        <FrameLayout
             android:layout_width="0dp"
-            android:layout_weight="1"
             android:layout_height="wrap_content"
-            android:minHeight="48dp"
-            android:maxLines="5"
-            android:inputType="textMultiLine|textCapSentences"
-            android:imeOptions="actionSend|flagNoExtractUi"
-            android:hint="@string/input_hint"
-            android:background="@drawable/bg_composer"
-            android:padding="12dp"
-            android:textSize="@dimen/font_body" />
+            android:layout_weight="1">
 
-        <TextView
-            android:id="@+id/btnSend"
-            android:layout_width="wrap_content"
-            android:layout_height="48dp"
-            android:layout_marginStart="8dp"
-            android:gravity="center"
-            android:paddingHorizontal="20dp"
-            android:text="@string/send"
-            android:textColor="@color/n_white"
-            android:background="@drawable/bg_btn_primary" />
+            <EditText
+                android:id="@+id/etInput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="56dp"
+                android:maxLines="5"
+                android:inputType="textMultiLine|textCapSentences"
+                android:imeOptions="actionSend|flagNoExtractUi"
+                android:hint="@string/input_hint"
+                android:background="@drawable/bg_composer"
+                android:paddingStart="16dp"
+                android:paddingEnd="88dp"
+                android:paddingTop="14dp"
+                android:paddingBottom="14dp"
+                android:textSize="@dimen/font_body" />
+
+            <TextView
+                android:id="@+id/btnSend"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_gravity="end|bottom"
+                android:layout_marginEnd="8dp"
+                android:layout_marginBottom="8dp"
+                android:gravity="center"
+                android:minWidth="64dp"
+                android:paddingHorizontal="14dp"
+                android:text="@string/send"
+                android:textColor="@color/n_white"
+                android:textSize="14sp"
+                android:background="@drawable/bg_btn_primary" />
+        </FrameLayout>
     </LinearLayout>
 </LinearLayout>

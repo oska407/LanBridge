@@ -102,9 +102,9 @@ class SettingsActivity : AppCompatActivity() {
             onSwitch = { repo.notifyEnabled = it; SessionState.notifyEnabled = it }))
         // 保存位置可在设置里改（v1.1.5 之前是硬编码只读，摆着误导）
         rows.add(Row.Item(getString(R.string.settings_group_chat), getString(R.string.settings_save_dir_image),
-            "${repo.saveDirImage} · 点击修改", Row.Kind.ACTION, onClick = { editSaveDir(true) }))
+            "${repo.saveDirImage} · 点击选择", Row.Kind.ACTION, onClick = { editSaveDir(true) }))
         rows.add(Row.Item(getString(R.string.settings_group_chat), getString(R.string.settings_save_dir_file),
-            "${repo.saveDirFile} · 点击修改", Row.Kind.ACTION, onClick = { editSaveDir(false) }))
+            "${repo.saveDirFile} · 点击选择", Row.Kind.ACTION, onClick = { editSaveDir(false) }))
         // 缓存水位：超出自动清最旧，默认 200MB
         val usage = "%.1f".format(com.lanbridge.util.CacheGuard.usageBytes(this) / 1048576f)
         rows.add(Row.Item(getString(R.string.settings_group_chat), getString(R.string.settings_cache_limit),
@@ -184,25 +184,70 @@ class SettingsActivity : AppCompatActivity() {
             }.show()
     }
 
-    /** 保存位置编辑（v1.1.5）：输入相对存储根目录的路径，如 Pictures/LanBridge */
+    /**
+     * 保存位置（v1.1.7c）：由纯手填改为「选择窗口 + 手填入入口」。
+     *
+     * 为什么不能直接给个系统文件选择器：本项存的是 MediaStore 的 RELATIVE_PATH
+     * （相对公共存储根目录），不是绝对文件路径，SAF 的 ACTION_OPEN_DOCUMENT_TREE
+     * 返回的是 content:// 树 URI，两者不可互换，接进来会导致保存失败。
+     * 而 RELATIVE_PATH 的**顶级目录受系统限制**（Android 10+）：
+     *   图片 → Pictures / DCIM；其它文件 → Download / Documents。
+     * 所以选择器只列合法项，避免用户填了一个好看但保存不了的路径；
+     * 需要自定义子目录时再走「手动输入…」，那里做同样的顶级目录校验。
+     */
     private fun editSaveDir(isImage: Boolean) {
+        val cur = if (isImage) repo.saveDirImage else repo.saveDirFile
+        val presets = saveDirPresets(isImage)
+        val labels = presets.map { p -> if (p == cur) "$p    ✓ 当前" else p }.toMutableList()
+        labels.add("手动输入…")
+        AlertDialog.Builder(this)
+            .setTitle(if (isImage) R.string.settings_save_dir_image else R.string.settings_save_dir_file)
+            .setItems(labels.toTypedArray()) { _, which ->
+                if (which >= presets.size) editSaveDirManual(isImage)
+                else {
+                    val v = presets[which]
+                    if (isImage) repo.saveDirImage = v else repo.saveDirFile = v
+                    Toast.makeText(this, "已保存：$v", Toast.LENGTH_SHORT).show()
+                    buildRows()
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun saveDirPresets(isImage: Boolean) = if (isImage)
+        listOf("Pictures/LanBridge", "Pictures", "DCIM/LanBridge", "DCIM")
+    else
+        listOf("Download/LanBridge", "Download", "Documents/LanBridge", "Documents")
+
+    /** 手动输入分支：顶级目录校验 + 绝对路径 / .. 拦截，校验不通过给出具体原因 */
+    private fun editSaveDirManual(isImage: Boolean) {
         val cur = if (isImage) repo.saveDirImage else repo.saveDirFile
         val input = android.widget.EditText(this).apply {
             setText(cur); setSingleLine(true); setSelection(cur.length)
         }
+        val tops = if (isImage) listOf("Pictures", "DCIM") else listOf("Download", "Documents")
         AlertDialog.Builder(this)
             .setTitle(if (isImage) R.string.settings_save_dir_image else R.string.settings_save_dir_file)
-            .setMessage(R.string.settings_save_dir_hint)
+            .setMessage("相对存储根目录，如 ${saveDirPresets(isImage).first()}；顶级目录只能是 ${tops.joinToString(" 或 ")}")
             .setView(input)
             .setPositiveButton(android.R.string.ok) { _, _ ->
-                val v = input.text.toString().trim()
-                if (v.isEmpty()) {
-                    Toast.makeText(this, "路径不能为空", Toast.LENGTH_SHORT).show(); return@setPositiveButton
+                val v = input.text.toString().trim().trim('/')
+                val top = v.substringBefore('/')
+                val bad = when {
+                    v.isEmpty() -> "路径不能为空"
+                    v.startsWith("/") -> "请填相对路径，不要以 / 开头"
+                    v.contains("..") -> "路径不能包含 .."
+                    top !in tops -> "顶级目录只能是 ${tops.joinToString(" 或 ")}（当前：$top）"
+                    else -> null
                 }
-                if (isImage) repo.saveDirImage = v else repo.saveDirFile = v
-                Toast.makeText(this, "已保存：${if (isImage) repo.saveDirImage else repo.saveDirFile}",
-                    Toast.LENGTH_SHORT).show()
-                buildRows()
+                if (bad != null) {
+                    Toast.makeText(this, bad, Toast.LENGTH_SHORT).show()
+                } else {
+                    if (isImage) repo.saveDirImage = v else repo.saveDirFile = v
+                    Toast.makeText(this, "已保存：$v", Toast.LENGTH_SHORT).show()
+                    buildRows()
+                }
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()

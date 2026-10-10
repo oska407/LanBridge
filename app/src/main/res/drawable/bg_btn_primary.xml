@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 实心主按钮：v1.1.8 定色 brand_500（#3B82F6）。
+     历程：brand_700（太蓝、与 logo 撞色）→ 中性深墨 n_ink_700（去蓝）→ brand_500（回到蓝，
+     但换成更明亮、更轻的中档蓝，不再与 logo 深蓝段撞色）。
+     注意：白字在 brand_500 上为 3.68:1，低于正文 AA 的 4.5:1；
+     若要合规，把 solid 改成 @color/brand_600（5.2:1），视觉差异很小。 -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-    <solid android:color="@color/brand_700" />
+    <solid android:color="@color/brand_500" />
     <corners android:radius="8dp" />
 </shape>

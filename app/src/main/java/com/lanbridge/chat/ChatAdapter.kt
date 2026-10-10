@@ -178,12 +178,21 @@ class ChatAdapter(
         bindSelection(h, msg) // 由它控制 clickable/longClickable 与圆圈状态
     }
 
+    /**
+     * 选中态（v1.1.8 整理）：圆圈显隐 + 勾选态 + 点击/长按归属。
+     * 注意：本方法会由 payload 局部刷新单独调用（不重绑气泡内容，防图片闪烁），
+     * 因此这里必须只碰「选中相关」的属性，不能依赖 bind() 里的赋值。
+     */
     private fun bindSelection(h: VH, msg: Message) {
-        val selectable = selection.selectionMode && msg.type != MsgType.SYSTEM_URL
+        val selectable = selection.selectionMode && selection.canSelect(msg)
         h.cbSelect.visibility = if (selectable) View.VISIBLE else View.GONE
         val selected = selection.isSelected(msg.id)
         h.cbSelect.setBackgroundResource(if (selected) R.drawable.bg_circle_checked else R.drawable.bg_select_off)
         h.cbSelect.text = if (selected) "✓" else ""
+        // 圆圈本身也做成热区（与点整行等价）；并给出朗读描述，不让 TalkBack 读成一个空圆
+        h.cbSelect.contentDescription = h.itemView.context.getString(
+            if (selected) R.string.cd_deselect else R.string.cd_select)
+        h.cbSelect.setOnClickListener { if (selection.selectionMode) selection.toggle(msg) }
         if (selectable) {
             // 多选模式：点整行切换选中（含图片区域）；图片不抢触摸，长按在此模式无意义
             h.row.isClickable = true

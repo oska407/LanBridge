@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-    <solid android:color="@color/n_white" />
-    <corners android:radius="12dp" />
-</shape>
+<!-- 输入框：浅蓝细边框（发丝线），两态都是 1dp，靠「深浅一档」而非粗细区分。
+     未聚焦 = brand_300（#93C5FD，最浅，安静）；
+     聚焦   = brand_400（#60A5FA，浅蓝，仍是 1dp 细线）。
+     v1.1.8 用户定调：聚焦态不要加粗变深蓝，保持细线的轻盈感。 -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true" android:drawable="@drawable/bg_composer_focused" />
+    <item android:drawable="@drawable/bg_composer_normal" />
+</selector>

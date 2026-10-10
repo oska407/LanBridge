@@ -25,7 +25,10 @@
         android:paddingVertical="2dp"
         android:background="?attr/selectableItemBackground">
 
-        <!-- 多选空心圆：未选=灰描边空心圆，选中=绿实心+白✓ -->
+        <!-- 多选空心圆（v1.1.8）：未选=灰描边空心圆，选中=品牌蓝实心+白✓；
+             位于气泡左侧（发出消息也一样在左，保证勾选位固定，不随左右分列跳动）；
+             圆圈自身也是一个热区，点它等价于点整行切换勾选。
+             显隐/勾选态由 ChatAdapter.bindSelection() 通过 payload 局部刷新驱动。 -->
         <TextView
             android:id="@+id/cbSelect"
             android:layout_width="24dp"
@@ -100,7 +103,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:maxWidth="200dp"
-                    android:textColor="@color/semantic_link"
+                    android:textColor="@color/brand_700"
                     android:textSize="@dimen/font_body" />
 
                 <TextView
