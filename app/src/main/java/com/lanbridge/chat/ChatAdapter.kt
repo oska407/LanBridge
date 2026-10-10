@@ -185,13 +185,18 @@ class ChatAdapter(
         h.cbSelect.setBackgroundResource(if (selected) R.drawable.bg_circle_checked else R.drawable.bg_select_off)
         h.cbSelect.text = if (selected) "✓" else ""
         if (selectable) {
+            // 多选模式：点整行切换选中（含图片区域）；图片不抢触摸，长按在此模式无意义
             h.row.isClickable = true
             h.row.isLongClickable = false
             h.ivImage.isClickable = false
+            h.ivImage.isLongClickable = false
         } else {
+            // 普通模式：图片自身可点（看大图）+ 可长按（弹菜单）；图片外的气泡区域由 row 接长按
             h.row.isClickable = false
             h.row.isLongClickable = true
             h.ivImage.isClickable = true
+            h.ivImage.isLongClickable = true
+            h.ivImage.setOnLongClickListener { callbacks.onLongPress(h.bubble, msg); true }
         }
     }
 
