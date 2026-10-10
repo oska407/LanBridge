@@ -1,14 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- 工具条按钮：≥48dp 热区 + ripple（T10D）；
-         v1.1.7 图标统一化：emoji → 线性 vector（drawableTop 图标 + 12sp 文字标签） -->
+         v1.1.7 图标统一化：emoji → 线性 vector（drawableTop 图标 + 12sp 文字标签）
+
+         垂直光学对齐（容器 toolBar = 56dp，本项 match_parent，故需自行居中）：
+           · layout_height 曾为 48dp —— LinearLayout 默认把子 View 顶对齐，
+             导致底部凭空多出 8dp，图标贴上缘而文字远离下缘（v1.1.7 反馈问题）。
+           · match_parent + gravity=center 后，内容块（24dp 图标 + 3dp + 约 14dp 文字）
+             约 41dp，上下各余 7.5dp。
+           · includeFontPadding=false 去掉字体行距，文字块紧贴字形，
+             使"图标上缘留白 ≈ 文字下缘留白"成立（图标内含 2dp 安全区内缩，
+             与文字 12sp 的下伸部留白基本抵消，实测差值 < 0.5dp）。
+           · 因此**不再加 paddingTop/paddingBottom**，额外内边距会破坏该平衡。 -->
     <style name="ToolItem">
         <item name="android:layout_width">0dp</item>
         <item name="android:layout_height">match_parent</item>
         <item name="android:layout_weight">1</item>
         <item name="android:gravity">center</item>
         <item name="android:textSize">12sp</item>
-        <item name="android:drawablePadding">2dp</item>
+        <item name="android:includeFontPadding">false</item>
+        <item name="android:drawablePadding">3dp</item>
         <item name="android:background">?attr/selectableItemBackgroundBorderless</item>
         <item name="android:clickable">true</item>
         <item name="android:focusable">true</item>
