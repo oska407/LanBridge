@@ -101,6 +101,8 @@ class ChatAdapter(
                 val out = msg.from == "phone"
                 h.row.gravity = if (out) android.view.Gravity.END else android.view.Gravity.START
 
+                val isVideo = msg.type == MsgType.FILE && msg.fileRef?.kind == "video"
+                val showImage = msg.type == MsgType.IMAGE || isVideo
                 // 图片/视频消息去掉气泡背景与 padding，避免绿/白边；文本/文件保持气泡
                 val pad = (10 * ctx.resources.displayMetrics.density).toInt()
                 if (showImage) {
@@ -121,8 +123,6 @@ class ChatAdapter(
                 }
 
                 // 图片 / 视频（视频是 FILE 类型但 kind=video：取首帧 + 播放角标）
-                val isVideo = msg.type == MsgType.FILE && msg.fileRef?.kind == "video"
-                val showImage = msg.type == MsgType.IMAGE || isVideo
                 h.imageWrap.visibility = if (showImage) View.VISIBLE else View.GONE
                 h.ivImage.visibility = if (showImage) View.VISIBLE else View.GONE
                 h.tvPlay.visibility = if (isVideo) View.VISIBLE else View.GONE
