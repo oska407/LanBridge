@@ -1,10 +1,10 @@
-/* LanBridge PC 端（T02A/T02B）：系统字体栈、零外链、实心绿按钮 #0A8A43（4.4:1 达 AA） */
+/* LanBridge PC 端（T02A/T02B）：系统字体栈、零外链、实心绿按钮 #1D4ED8（4.4:1 达 AA） */
 :root {
-  --green-500: #07C160; --green-600: #06AD56; --green-700: #0A8A43; --green-50: #E8F8EE;
+  --brand-500: #3B82F6; --brand-600: #2563EB; --brand-700: #1D4ED8; --brand-50: #EAF2FE;
   --n-white: #fff; --n-bg: #EDEDED; --n-surface: #F7F7F7; --n-divider: #D9D9D9;
   --text: #1A1A1A; --text-2: #6B6B6B;
   --link: #576B95; --danger-text: #C9302C; --danger-btn: #FA5151;
-  --bubble-out: #95EC69; --bubble-in: #fff;
+  --bubble-out: #D6E9FF; --bubble-in: #fff;
   --radius: 8px;
 }
 * { box-sizing: border-box; }
@@ -27,7 +27,7 @@ body {
 .brandLogo { width: 24px; height: 24px; border-radius: 6px; margin-right: 7px; object-fit: cover; }
 #conn { display: flex; align-items: center; gap: 6px; color: var(--text-2); }
 .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-.dot.on { background: var(--green-500); }
+.dot.on { background: var(--brand-500); }
 .dot.off { background: #bbb; }
 #peer { color: var(--text-2); font-size: 12px; }
 
@@ -53,14 +53,14 @@ body {
 .bubble .fname { color: var(--link); text-decoration: underline; }
 .bubble .fsize { color: var(--text-2); font-size: 12px; margin-left: 8px; }
 .bubble .progress { height: 4px; background: var(--n-divider); border-radius: 2px; margin-top: 6px; overflow: hidden; }
-.bubble .progress > i { display: block; height: 100%; background: var(--green-500); width: 0; }
+.bubble .progress > i { display: block; height: 100%; background: var(--brand-500); width: 0; }
 .bubble.failed { outline: 1px solid var(--danger-text); }
 .bubble .status { color: var(--danger-text); font-size: 12px; }
 .bubble .status .resend { color: var(--link); cursor: pointer; margin-left: 6px; }
-.bubble.selected { outline: 2px solid var(--green-500); }
+.bubble.selected { outline: 2px solid var(--brand-500); }
 .syscard {
-  margin: 0 auto 12px; background: var(--green-50); border: 1px solid var(--green-500);
-  border-radius: var(--radius); padding: 10px 14px; text-align: center; color: var(--green-700);
+  margin: 0 auto 12px; background: var(--brand-50); border: 1px solid var(--brand-500);
+  border-radius: var(--radius); padding: 10px 14px; text-align: center; color: var(--brand-700);
   max-width: 480px; cursor: pointer;
 }
 .time { text-align: center; color: var(--text-2); font-size: 12px; margin: 10px 0; }
@@ -77,7 +77,7 @@ body {
 }
 #toolbar button:hover { background: var(--n-bg); }
 #toolbar button:active { transform: scale(0.98); }
-#toolbar button:focus-visible { outline: 2px solid var(--green-500); outline-offset: 2px; }
+#toolbar button:focus-visible { outline: 2px solid var(--brand-500); outline-offset: 2px; }
 #toolbar button.danger { color: var(--danger-text); }
 #toolbar button:disabled { opacity: .47; cursor: not-allowed; }
 
@@ -86,7 +86,7 @@ body {
   flex: none; background: var(--n-surface); border-top: 1px solid var(--n-divider);
   padding: 8px 12px;
 }
-.composer.drag { outline: 2px dashed var(--green-500); outline-offset: -4px; }
+.composer.drag { outline: 2px dashed var(--brand-500); outline-offset: -4px; }
 .attaches { display: flex; flex-wrap: wrap; gap: 6px; }
 .attaches:empty { display: none; }
 .attaches .chip {
@@ -102,12 +102,12 @@ body {
   flex: 1; height: 72px; max-height: 140px; resize: none; border: 0; border-radius: var(--radius);
   padding: 10px; font: inherit; background: #fff;
 }
-#input:focus-visible { outline: 2px solid var(--green-500); }
+#input:focus-visible { outline: 2px solid var(--brand-500); }
 button.primary {
-  border: 0; background: var(--green-700); color: #fff; padding: 10px 20px;
+  border: 0; background: var(--brand-700); color: #fff; padding: 10px 20px;
   border-radius: var(--radius); cursor: pointer; font-size: 14px;
 }
-button.primary:hover { background: var(--green-600); }
+button.primary:hover { background: var(--brand-600); }
 button.primary:disabled { opacity: .47; cursor: not-allowed; }
 button.primary:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 
@@ -118,13 +118,13 @@ button.primary:focus-visible { outline: 2px solid var(--text); outline-offset: 2
 }
 .ctxmenu div { padding: 8px 16px; cursor: pointer; }
 .ctxmenu div:hover { background: var(--n-bg); }
-.ctxmenu div.hl { color: var(--green-700); background: var(--green-50); }
+.ctxmenu div.hl { color: var(--brand-700); background: var(--brand-50); }
 .ctxmenu div.danger { color: var(--danger-text); }
 .ctxmenu div.disabled { color: #bbb; cursor: not-allowed; }
 
 /* 多选模式：点整行切换、底部操作栏取代输入区（F-16 AC5） */
 .selbar { flex: none; display: flex; align-items: center; gap: 12px; background: var(--n-surface); padding: 8px 16px; }
-.selbar button { border: 0; background: transparent; cursor: pointer; color: var(--green-700); font-size: 14px; }
+.selbar button { border: 0; background: transparent; cursor: pointer; color: var(--brand-700); font-size: 14px; }
 
 @media (max-width: 960px) { #toolbar button span { display: none; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

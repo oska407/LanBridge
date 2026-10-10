@@ -119,7 +119,7 @@ class PreviewActivity : AppCompatActivity() {
         val sel = store?.isSelected(items[currentPos].id) ?: false
         if (sel) {
             btnToggle.text = "✓ ${getString(R.string.preview_select)}"
-            btnToggle.setTextColor(getColor(R.color.green_500))
+            btnToggle.setTextColor(getColor(R.color.brand_500))
         } else {
             btnToggle.text = getString(R.string.preview_select)
             btnToggle.setTextColor(getColor(R.color.n_white))

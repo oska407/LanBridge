@@ -7,6 +7,9 @@
     <dimen name="font_caption">12sp</dimen>
     <dimen name="toolbar_height">56dp</dimen>
     <dimen name="bubble_max_width">280dp</dimen>
+    <!-- 聊天记录窗口内照片/视频预览上限（v1.1.7：整体缩小 30%，240×320 → 168×224） -->
+    <dimen name="chat_image_max_width">168dp</dimen>
+    <dimen name="chat_image_max_height">224dp</dimen>
     <!-- 选择页原图/打包 空心圆直径，跟随工具栏高度可调 -->
     <dimen name="gallery_toggle_size">22dp</dimen>
 </resources>

@@ -92,7 +92,7 @@
             android:gravity="center"
             android:paddingHorizontal="12dp"
             android:text="@string/select_all"
-            android:textColor="@color/green_700"
+            android:textColor="@color/brand_700"
             android:background="?attr/selectableItemBackground" />
     </LinearLayout>
 
@@ -152,18 +152,27 @@
             android:background="?attr/selectableItemBackground" />
     </LinearLayout>
 
-    <!-- 工具条（安卓四项：发文件/发照片/设置/清空，末位标红） -->
+    <!-- 工具条（安卓四项：发文件/发照片/设置/清空，末位标红）
+         v1.1.7：emoji 图标 → 统一线性 vector（ic_tool_* / ic_trash），图标在上文字在下 -->
     <LinearLayout
         android:id="@+id/toolBar"
         android:layout_width="match_parent"
-        android:layout_height="48dp"
+        android:layout_height="@dimen/toolbar_height"
         android:orientation="horizontal"
         android:background="@color/n_surface">
 
-        <TextView android:id="@+id/btnFile" style="@style/ToolItem" android:text="📁 发文件" android:contentDescription="@string/toolbar_send_file" />
-        <TextView android:id="@+id/btnPhoto" style="@style/ToolItem" android:text="🖼 发照片" android:contentDescription="@string/toolbar_send_photo" />
-        <TextView android:id="@+id/btnSettings" style="@style/ToolItem" android:text="⚙ 设置" android:contentDescription="@string/toolbar_settings" />
-        <TextView android:id="@+id/btnClear" style="@style/ToolItem" android:text="🗑 清空" android:textColor="@color/danger_text" android:contentDescription="@string/toolbar_clear" />
+        <TextView android:id="@+id/btnFile" style="@style/ToolItem"
+            android:drawableTop="@drawable/ic_tool_file"
+            android:text="@string/toolbar_send_file" android:contentDescription="@string/toolbar_send_file" />
+        <TextView android:id="@+id/btnPhoto" style="@style/ToolItem"
+            android:drawableTop="@drawable/ic_tool_photo"
+            android:text="@string/toolbar_send_photo" android:contentDescription="@string/toolbar_send_photo" />
+        <TextView android:id="@+id/btnSettings" style="@style/ToolItem"
+            android:drawableTop="@drawable/ic_tool_settings"
+            android:text="@string/toolbar_settings" android:contentDescription="@string/toolbar_settings" />
+        <TextView android:id="@+id/btnClear" style="@style/ToolItem"
+            android:drawableTop="@drawable/ic_trash"
+            android:text="@string/toolbar_clear" android:textColor="@color/danger_text" android:contentDescription="@string/toolbar_clear" />
     </LinearLayout>
 
     <!-- 发送窗口：输入区 + 发送按钮 -->

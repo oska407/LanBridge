@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 自适应图标（v1.1.7）：前景全出血 logo，背景同图兜底；
+     新型启动器按圆形/圆角蒙版取中心区域，不再出现 legacy 图标被套白圈的问题 -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background" />
+    <foreground android:drawable="@mipmap/ic_launcher_fg" />
+</adaptive-icon>

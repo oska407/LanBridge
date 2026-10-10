@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- 设计 Token（ARCHITECTURE.md §7，双端同源） -->
-    <!-- 主绿系 -->
-    <color name="green_500">#07C160</color>
-    <color name="green_600">#06AD56</color>
-    <color name="green_700">#0A8A43</color>  <!-- 实心承载白字一律用它（4.4:1） -->
-    <color name="green_50">#E8F8EE</color>
+    <!-- 设计 Token（ARCHITECTURE.md §7，双端同源）
+         v1.1.7：品牌色由微信绿迁移至 logo 蓝系（#3B82F6），双端变量名同步为 brand_* -->
+    <!-- 品牌蓝（取自 logo 渐变主色） -->
+    <color name="brand_500">#3B82F6</color>
+    <color name="brand_600">#2563EB</color>
+    <color name="brand_700">#1D4ED8</color>  <!-- 实心承载白字用它（6.7:1 过 AA） -->
+    <color name="brand_50">#EAF2FE</color>
     <!-- 中性 -->
     <color name="n_white">#FFFFFF</color>
     <color name="n_bg">#EDEDED</color>
@@ -19,10 +20,10 @@
     <color name="danger_text">#C9302C</color>
     <color name="danger_btn">#FA5151</color>
     <color name="warn">#FF8F1F</color>
-    <!-- 聊天 -->
-    <color name="bubble_out">#95EC69</color>
+    <!-- 聊天（发出气泡改为 logo 浅蓝，与品牌色协调；深色文字对比度充足） -->
+    <color name="bubble_out">#D6E9FF</color>
     <color name="bubble_in">#FFFFFF</color>
     <color name="chat_bg">#EDEDED</color>
-    <!-- 图标背景（取自 logo 底色） -->
-    <color name="ic_launcher_background">#A3EDF6</color>
+    <!-- 图标背景（自适应图标兜底色，取 logo 渐变中段蓝） -->
+    <color name="ic_launcher_background">#45A2F4</color>
 </resources>

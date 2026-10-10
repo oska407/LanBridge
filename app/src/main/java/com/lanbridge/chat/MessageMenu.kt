@@ -54,7 +54,7 @@ object MessageMenu {
                 tv.textSize = 15f
                 when {
                     items[position].danger -> { tv.setTextColor(Color.parseColor("#C9302C")); v.setBackgroundColor(Color.WHITE) }
-                    items[position].highlight -> { tv.setTextColor(Color.parseColor("#0A8A43")); v.setBackgroundColor(Color.parseColor("#E8F8EE")) }
+                    items[position].highlight -> { tv.setTextColor(Color.parseColor("#1D4ED8")); v.setBackgroundColor(Color.parseColor("#EAF2FE")) }
                     else -> { tv.setTextColor(Color.parseColor("#1A1A1A")); v.setBackgroundColor(Color.WHITE) }
                 }
                 return v

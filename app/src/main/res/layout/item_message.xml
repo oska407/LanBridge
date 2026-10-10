@@ -58,7 +58,7 @@
                 android:textIsSelectable="true"
                 android:visibility="gone" />
 
-            <!-- 图片/视频预览：按实际长宽比，max 240×320，不再强制正方形（需求①） -->
+            <!-- 图片/视频预览：按实际长宽比，max 168×224（v1.1.7 缩小 30%），不再强制正方形（需求①） -->
             <FrameLayout
                 android:id="@+id/imageWrap"
                 android:layout_width="wrap_content"
@@ -69,8 +69,8 @@
                     android:id="@+id/ivImage"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:maxWidth="240dp"
-                    android:maxHeight="320dp"
+                    android:maxWidth="@dimen/chat_image_max_width"
+                    android:maxHeight="@dimen/chat_image_max_height"
                     android:adjustViewBounds="true"
                     android:scaleType="fitCenter"
                     android:contentDescription="@null" />
@@ -83,7 +83,7 @@
                     android:gravity="center"
                     android:text="▶"
                     android:textColor="@color/n_white"
-                    android:textSize="28sp"
+                    android:textSize="20sp"
                     android:background="#33000000"
                     android:visibility="gone" />
             </FrameLayout>
@@ -146,7 +146,7 @@
             android:gravity="center"
             android:paddingHorizontal="10dp"
             android:text="@string/copy_link"
-            android:textColor="@color/green_700"
+            android:textColor="@color/brand_700"
             android:background="?attr/selectableItemBackground"
             android:visibility="gone" />
     </LinearLayout>
