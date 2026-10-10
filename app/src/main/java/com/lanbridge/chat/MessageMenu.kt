@@ -32,12 +32,12 @@ object MessageMenu {
         val items = when (msg.type) {
             MsgType.TEXT -> listOf(
                 Item(ctx.getString(R.string.menu_copy)),
-                Item(ctx.getString(R.string.menu_share_wechat), highlight = true),
+                Item(ctx.getString(R.string.menu_forward)),
                 Item(ctx.getString(R.string.menu_multi_select)),
                 Item(ctx.getString(R.string.menu_delete), danger = true),
             )
             else -> listOf( // IMAGE / FILE / VIDEO
-                Item(ctx.getString(R.string.menu_share_wechat), highlight = true),
+                Item(ctx.getString(R.string.menu_forward)),
                 Item(ctx.getString(R.string.menu_save)),
                 Item(ctx.getString(R.string.menu_open_with)),
                 Item(ctx.getString(R.string.menu_multi_select)),
@@ -68,7 +68,7 @@ object MessageMenu {
             val msg0 = msg
             when (items[pos].label) {
                 ctx.getString(R.string.menu_copy) -> callbacks.onCopy(msg0)
-                ctx.getString(R.string.menu_share_wechat) -> callbacks.onShareWeChat(msg0)
+                ctx.getString(R.string.menu_forward) -> callbacks.onShareWeChat(msg0)
                 ctx.getString(R.string.menu_save) -> callbacks.onSave(msg0)
                 ctx.getString(R.string.menu_open_with) -> callbacks.onOpenWith(msg0)
                 ctx.getString(R.string.menu_multi_select) -> callbacks.onMultiSelect(msg0)

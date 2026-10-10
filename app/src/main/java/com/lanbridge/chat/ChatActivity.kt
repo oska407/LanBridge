@@ -35,6 +35,7 @@ import com.lanbridge.settings.SettingsActivity
 import com.lanbridge.util.CrashLogger
 import com.lanbridge.wechat.InboundCopier
 import com.lanbridge.wechat.OutboundShare
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 /**
@@ -78,10 +79,15 @@ class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Cal
             val paths = r.data?.getStringArrayListExtra(GalleryActivity.RESULT_FILES) ?: return@registerForActivityResult
             val original = r.data?.getBooleanExtra(GalleryActivity.RESULT_ORIGINAL, false) ?: false
             val names = r.data?.getStringArrayListExtra(GalleryActivity.RESULT_NAMES) ?: arrayListOf()
+            val pkg = r.data?.getBooleanExtra(GalleryActivity.RESULT_PACKAGE, false) ?: false
             pendingSendText?.let { TransferEngine.sendText(it); pendingSendText = null; etInput.text = "" }
-            paths.forEachIndexed { i, p ->
-                val name = names.getOrNull(i) ?: java.io.File(p).name
-                sendImageFile(java.io.File(p), name, original)
+            if (pkg) {
+                dispatchPackage(paths, names, original)
+            } else {
+                paths.forEachIndexed { i, p ->
+                    val name = names.getOrNull(i) ?: java.io.File(p).name
+                    sendImageFile(java.io.File(p), name, original)
+                }
             }
         }
 
@@ -164,8 +170,9 @@ class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Cal
         // 多选操作栏
         findViewById<View>(R.id.btnSelExit).setOnClickListener { selection.exit() }
         findViewById<View>(R.id.btnSelAll).setOnClickListener { selection.selectAll(SessionState.messages.toList()) }
-        findViewById<View>(R.id.btnShareBatch).setOnClickListener { batchShare() }
         findViewById<View>(R.id.btnSaveBatch).setOnClickListener { batchSave() }
+        findViewById<View>(R.id.btnForwardBatch).setOnClickListener { batchShare() }
+        findViewById<View>(R.id.btnCopyBatch).setOnClickListener { batchCopy() }
         findViewById<View>(R.id.btnDeleteBatch).setOnClickListener { batchDelete() }
 
         BridgeForegroundService.start(this)
@@ -288,6 +295,38 @@ class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Cal
         }
     }
 
+    /** 打包发送（v1.1.6）：逐个按原图/压缩策略备好文件，再压成单个 zip 一次性发出（压缩在 IO 线程） */
+    private fun dispatchPackage(paths: ArrayList<String>, names: ArrayList<String>, original: Boolean) {
+        if (paths.isEmpty()) return
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            val entries = paths.mapIndexedNotNull { i, p ->
+                val src = java.io.File(p)
+                if (!src.exists()) return@mapIndexedNotNull null
+                val name = names.getOrNull(i) ?: src.name
+                prepareSendFile(src, name, original) to name
+            }
+            if (entries.isEmpty()) return@launch
+            val zip = java.io.File(java.io.File(cacheDir, "lanbridge_zip"),
+                "LanBridge_打包_${System.currentTimeMillis()}.zip")
+            if (com.lanbridge.util.ZipUtil.zip(entries, zip)) {
+                TransferEngine.publishFile(zip, zip.name, "application/zip", "file", false)
+            } else {
+                runOnUiThread {
+                    Toast.makeText(this@ChatActivity, R.string.send_failed, Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    /** 取实际要发送的文件：原图直传，否则按设置压缩（压缩失败回退原文件） */
+    private fun prepareSendFile(src: java.io.File, originalName: String, original: Boolean): java.io.File {
+        val settings = com.lanbridge.settings.SettingsRepository.get(this)
+        if (original || settings.compressMaxLongSide <= 0) return src
+        return com.lanbridge.media.ImageCompressor.compress(
+            src, settings.compressMaxLongSide, settings.compressQuality,
+            java.io.File(cacheDir, "lanbridge_out")) ?: src
+    }
+
     private fun confirmClear() {
         AlertDialog.Builder(this)
             .setTitle(R.string.clear_confirm_title)
@@ -309,8 +348,10 @@ class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Cal
         composer.visibility = if (inSel) View.GONE else View.VISIBLE
         tvSelCount.text = getString(R.string.selected_count, selection.selectedIds.size)
         val enabled = selection.selectedIds.isNotEmpty()
-        findViewById<View>(R.id.btnShareBatch).isEnabled = enabled
+        val hasText = selectedMessages().any { it.type == com.lanbridge.model.MsgType.TEXT }
         findViewById<View>(R.id.btnSaveBatch).isEnabled = enabled
+        findViewById<View>(R.id.btnForwardBatch).isEnabled = enabled
+        findViewById<View>(R.id.btnCopyBatch).isEnabled = enabled && hasText
         findViewById<View>(R.id.btnDeleteBatch).isEnabled = enabled
     }
 
@@ -350,6 +391,20 @@ class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Cal
             }
             runOnUiThread { Toast.makeText(this@ChatActivity, getString(R.string.save_ok) + " ($ok)", Toast.LENGTH_SHORT).show() }
         }
+    }
+
+    /** 批量复制：仅复制文字消息，按换行拼接 */
+    private fun batchCopy() {
+        val texts = selectedMessages()
+            .filter { it.type == com.lanbridge.model.MsgType.TEXT }
+            .map { it.text }
+        if (texts.isEmpty()) {
+            Toast.makeText(this, "没有可复制的文字", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val cm = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+        cm.setPrimaryClip(ClipData.newPlainText("lanbridge_batch", texts.joinToString("\n")))
+        Toast.makeText(this, "已复制 ${texts.size} 条文字", Toast.LENGTH_SHORT).show()
     }
 
     private fun batchDelete() {

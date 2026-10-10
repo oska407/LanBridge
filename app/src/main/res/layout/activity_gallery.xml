@@ -61,11 +61,12 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:scrollbars="none" />
+        android:scrollbars="none"
+        android:background="@android:color/black" />
 
-    <!-- 底部操作栏：预览(N) + 原图勾选 + 发送(N)
-         高度必须 wrap_content：导航栏弹出时 inset 加为 padding，栏体背景自动延伸到导航栏下方；
-         固定 56dp 会把内容挤压出可视区（v1.1.5 修复） -->
+    <!-- 底部操作栏：预览(N) + [原图 空心圆] + [打包 空心圆] + 发送(N)
+         原图与打包为相互独立的两个开关（需求③④）。
+         高度 wrap_content：导航栏弹出时 inset 加为 padding，栏体背景自动延伸到导航栏下方。 -->
     <LinearLayout
         android:id="@+id/bottomBar"
         android:layout_width="match_parent"
@@ -87,14 +88,58 @@
             android:textSize="@dimen/font_body"
             android:background="?attr/selectableItemBackground" />
 
-        <CheckBox
-            android:id="@+id/cbOriginal"
+        <View
             android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_height="wrap_content"
-            android:minHeight="48dp"
-            android:text="@string/gallery_original"
-            android:textSize="@dimen/font_body" />
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <!-- 原图：空心圆开关 -->
+        <LinearLayout
+            android:id="@+id/layOriginal"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="8dp"
+            android:background="?attr/selectableItemBackground">
+
+            <View
+                android:id="@+id/ivOriginal"
+                android:layout_width="@dimen/gallery_toggle_size"
+                android:layout_height="@dimen/gallery_toggle_size"
+                android:background="@drawable/bg_toggle_off" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="@string/gallery_original"
+                android:textColor="@color/n_text_primary"
+                android:textSize="@dimen/font_body" />
+        </LinearLayout>
+
+        <!-- 打包：与原图独立的开关 -->
+        <LinearLayout
+            android:id="@+id/layPackage"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="8dp"
+            android:background="?attr/selectableItemBackground">
+
+            <View
+                android:id="@+id/ivPackage"
+                android:layout_width="@dimen/gallery_toggle_size"
+                android:layout_height="@dimen/gallery_toggle_size"
+                android:background="@drawable/bg_toggle_off" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="@string/gallery_package"
+                android:textColor="@color/n_text_primary"
+                android:textSize="@dimen/font_body" />
+        </LinearLayout>
 
         <TextView
             android:id="@+id/btnSend"

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 预览页（微信样式，深色）：顶栏(返回 | i/N | 选择) + 大图翻页 + 缩略图条 + 底栏(原图 | 发送(N)) -->
+<!-- 预览页（微信样式，深色）：顶栏(返回 | i/N | 选择) + 大图翻页 + 缩略图条 + 底栏(原图 空心圆 | 发送(N)) -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/root"
     android:layout_width="match_parent"
@@ -78,15 +78,34 @@
         android:paddingHorizontal="16dp"
         android:background="#1A1A1A">
 
-        <CheckBox
-            android:id="@+id/cbOriginal"
+        <!-- 原图：空心圆开关（与选择页风格一致；深色底用白描边空心圆） -->
+        <LinearLayout
+            android:id="@+id/layOriginal"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless">
+
+            <View
+                android:id="@+id/ivOriginal"
+                android:layout_width="@dimen/gallery_toggle_size"
+                android:layout_height="@dimen/gallery_toggle_size"
+                android:background="@drawable/bg_circle_unchecked" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="@string/gallery_original"
+                android:textColor="@color/n_white"
+                android:textSize="@dimen/font_body" />
+        </LinearLayout>
+
+        <View
             android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_height="wrap_content"
-            android:minHeight="48dp"
-            android:text="@string/gallery_original"
-            android:textColor="@color/n_white"
-            android:textSize="@dimen/font_body" />
+            android:layout_height="0dp"
+            android:layout_weight="1" />
 
         <TextView
             android:id="@+id/btnSend"

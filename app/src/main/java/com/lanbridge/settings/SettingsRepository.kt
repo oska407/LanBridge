@@ -29,6 +29,11 @@ class SettingsRepository(context: Context) {
         get() = sp.getBoolean(KEY_ORIGINAL, false)
         set(v) { sp.edit().putBoolean(KEY_ORIGINAL, v).apply() }
 
+    // 打包发送：默认关 —— 开则所选照片压成单个 zip 发送，与原图开关相互独立（v1.1.6）
+    var sendPackage: Boolean
+        get() = sp.getBoolean(KEY_PACKAGE, false)
+        set(v) { sp.edit().putBoolean(KEY_PACKAGE, v).apply() }
+
     var autoStopAfterTransfer: Boolean
         get() = sp.getBoolean(KEY_AUTO_STOP, false)
         set(v) { sp.edit().putBoolean(KEY_AUTO_STOP, v).apply() }
@@ -69,6 +74,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_LONG_SIDE = "compressMaxLongSide"
         private const val KEY_QUALITY = "compressQuality"
         private const val KEY_ORIGINAL = "sendOriginal"
+        private const val KEY_PACKAGE = "sendPackage"
         private const val KEY_AUTO_STOP = "autoStopAfterTransfer"
         private const val KEY_SHOW_URL = "showUrlInChat"
         private const val KEY_NOTIFY = "notifyEnabled"

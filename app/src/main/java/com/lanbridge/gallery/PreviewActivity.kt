@@ -5,7 +5,6 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.CheckBox
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
@@ -44,7 +43,8 @@ class PreviewActivity : AppCompatActivity() {
     private lateinit var tvIndex: TextView
     private lateinit var btnToggle: TextView
     private lateinit var btnSend: TextView
-    private lateinit var cbOriginal: CheckBox
+    private lateinit var ivOriginal: View
+    private var originalOn = false
     private lateinit var pagerAdapter: PagerAdapter
     private lateinit var thumbAdapter: ThumbAdapter
     private val items = mutableListOf<GalleryRepository.MediaItem>()
@@ -63,7 +63,7 @@ class PreviewActivity : AppCompatActivity() {
         tvIndex = findViewById(R.id.tvIndex)
         btnToggle = findViewById(R.id.btnToggle)
         btnSend = findViewById(R.id.btnSend)
-        cbOriginal = findViewById(R.id.cbOriginal)
+        ivOriginal = findViewById(R.id.ivOriginal)
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.root)) { _, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -77,7 +77,7 @@ class PreviewActivity : AppCompatActivity() {
         if (st == null || map == null || st.size() == 0) { finish(); return }
         items.addAll(st.orderedIds.mapNotNull { map[it] })
         if (items.isEmpty()) { finish(); return }
-        cbOriginal.isChecked = startOriginal
+        setOriginal(startOriginal)
 
         pagerAdapter = PagerAdapter()
         pager.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
@@ -95,10 +95,11 @@ class PreviewActivity : AppCompatActivity() {
 
         findViewById<View>(R.id.btnBack).setOnClickListener { finish() }
         btnToggle.setOnClickListener { toggleCurrent() }
+        findViewById<View>(R.id.layOriginal).setOnClickListener { setOriginal(!originalOn) }
         btnSend.setOnClickListener {
             setResult(RESULT_OK, Intent()
                 .putExtra(RESULT_SEND, true)
-                .putExtra(RESULT_ORIGINAL, cbOriginal.isChecked))
+                .putExtra(RESULT_ORIGINAL, originalOn))
             finish()
         }
         syncCurrent(0)
@@ -128,6 +129,12 @@ class PreviewActivity : AppCompatActivity() {
         btnSend.isEnabled = n > 0
         thumbAdapter.notifyDataSetChanged() // ≤100 项小列表，直接全刷
         (thumbs.layoutManager as? LinearLayoutManager)?.scrollToPosition(currentPos)
+    }
+
+    /** 原图空心圆状态切换（深色底：白描边空心圆 <-> 绿色实心圆） */
+    private fun setOriginal(on: Boolean) {
+        originalOn = on
+        ivOriginal.setBackgroundResource(if (on) R.drawable.bg_circle_checked else R.drawable.bg_circle_unchecked)
     }
 
     private fun toggleCurrent() {

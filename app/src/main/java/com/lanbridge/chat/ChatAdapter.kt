@@ -99,8 +99,17 @@ class ChatAdapter(
                 h.btnCopy.visibility = View.GONE
                 h.bubble.gravity = android.view.Gravity.START
                 val out = msg.from == "phone"
-                h.bubble.setBackgroundResource(if (out) R.drawable.bg_bubble_out else R.drawable.bg_bubble_in)
                 h.row.gravity = if (out) android.view.Gravity.END else android.view.Gravity.START
+
+                // 图片/视频消息去掉气泡背景与 padding，避免绿/白边；文本/文件保持气泡
+                val pad = (10 * ctx.resources.displayMetrics.density).toInt()
+                if (showImage) {
+                    h.bubble.setBackgroundResource(android.R.color.transparent)
+                    h.bubble.setPadding(0, 0, 0, 0)
+                } else {
+                    h.bubble.setBackgroundResource(if (out) R.drawable.bg_bubble_out else R.drawable.bg_bubble_in)
+                    h.bubble.setPadding(pad, pad, pad, pad)
+                }
 
                 h.tvText.visibility = if (msg.type == MsgType.TEXT) View.VISIBLE else View.GONE
                 if (msg.type == MsgType.TEXT) h.tvText.text = msg.text
@@ -119,7 +128,7 @@ class ChatAdapter(
                 h.tvPlay.visibility = if (isVideo) View.VISIBLE else View.GONE
                 val path = msg.fileRef?.localPath
                 if (msg.type == MsgType.IMAGE) {
-                    Glide.with(h.ivImage).load(path ?: msg.fileRef?.id).centerCrop().into(h.ivImage)
+                    Glide.with(h.ivImage).load(path ?: msg.fileRef?.id).fitCenter().into(h.ivImage)
                     h.ivImage.setOnClickListener { callbacks.onPreviewImage(msg) } // 点图看大图
                 } else if (isVideo && !path.isNullOrBlank()) {
                     loadVideoFrame(h.ivImage, path)
@@ -156,28 +165,34 @@ class ChatAdapter(
                     h.progress.visibility = View.VISIBLE
                     h.progress.progress = msg.progress
                 } else h.progress.visibility = View.GONE
-                bindSelection(h, msg)
             }
         }
 
         // 多选模式：点整行切换选中（F-16 AC5，大热区）
-        h.row.isClickable = selection.selectionMode
-        h.row.isLongClickable = true
         h.row.setOnClickListener {
             if (selection.selectionMode) selection.toggle(msg)
         }
         h.row.setOnLongClickListener {
             callbacks.onLongPress(h.bubble, msg); true
         }
+        bindSelection(h, msg) // 由它控制 clickable/longClickable 与圆圈状态
     }
 
     private fun bindSelection(h: VH, msg: Message) {
         val selectable = selection.selectionMode && msg.type != MsgType.SYSTEM_URL
-        h.cbSelect.visibility = if (selection.selectionMode && msg.type != MsgType.SYSTEM_URL)
-            View.VISIBLE else View.GONE
-        h.cbSelect.setBackgroundResource(
-            if (selection.isSelected(msg.id)) R.drawable.bg_circle_checked else R.drawable.bg_circle_unchecked)
-        if (!selectable) h.row.isClickable = false
+        h.cbSelect.visibility = if (selectable) View.VISIBLE else View.GONE
+        val selected = selection.isSelected(msg.id)
+        h.cbSelect.setBackgroundResource(if (selected) R.drawable.bg_circle_checked else R.drawable.bg_select_off)
+        h.cbSelect.text = if (selected) "✓" else ""
+        if (selectable) {
+            h.row.isClickable = true
+            h.row.isLongClickable = false
+            h.ivImage.isClickable = false
+        } else {
+            h.row.isClickable = false
+            h.row.isLongClickable = true
+            h.ivImage.isClickable = true
+        }
     }
 
     /** 视频首帧缩略图（v1.1.5）：IO 线程取帧避免卡滚动，取不到帧时回退 Glide 兜底 */
@@ -194,7 +209,7 @@ class ChatAdapter(
             if (iv.tag != path) return@launch
             iv.post {
                 if (bmp != null) iv.setImageBitmap(bmp)
-                else Glide.with(iv).load(path).centerCrop().into(iv)
+                else Glide.with(iv).load(path).fitCenter().into(iv)
             }
         }
     }
@@ -220,6 +235,6 @@ class ChatAdapter(
         val tvStatus: TextView = v.findViewById(R.id.tvStatus)
         val btnResend: TextView = v.findViewById(R.id.btnResend)
         val btnCopy: TextView = v.findViewById(R.id.btnCopy)
-        val cbSelect: View = v.findViewById(R.id.cbSelect)
+        val cbSelect: TextView = v.findViewById(R.id.cbSelect)
     }
 }

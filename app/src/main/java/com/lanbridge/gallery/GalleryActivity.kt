@@ -6,7 +6,6 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.view.View
-import android.widget.CheckBox
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -30,6 +29,7 @@ class GalleryActivity : AppCompatActivity() {
         const val RESULT_FILES = "result_files"
         const val RESULT_NAMES = "result_names"
         const val RESULT_ORIGINAL = "result_original"
+        const val RESULT_PACKAGE = "result_package"
     }
 
     private lateinit var repo: GalleryRepository
@@ -41,6 +41,12 @@ class GalleryActivity : AppCompatActivity() {
     private lateinit var btnSend: TextView
     private lateinit var btnPreview: TextView
     private lateinit var titleBar: View
+    private lateinit var ivOriginal: View
+    private lateinit var ivPackage: View
+    /** 原图开关（空心圆），持久化到设置 */
+    private var originalOn = false
+    /** 打包开关（空心圆），与原图相互独立；开则将所选压成单个 zip 发送 */
+    private var packageOn = false
     private val buckets = mutableListOf<GalleryRepository.Bucket>()
     private var bucketIndex = 0
     /** 全部已加载过的媒体项（跨相册/跨分页），发送与预览按 id 取 */
@@ -50,8 +56,7 @@ class GalleryActivity : AppCompatActivity() {
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
             if (r.resultCode == RESULT_OK) {
                 r.data?.let { d ->
-                    findViewById<CheckBox>(R.id.cbOriginal).isChecked =
-                        d.getBooleanExtra(PreviewActivity.RESULT_ORIGINAL, false)
+                    setOriginal(d.getBooleanExtra(PreviewActivity.RESULT_ORIGINAL, false))
                     if (d.getBooleanExtra(PreviewActivity.RESULT_SEND, false)) send()
                 }
             }
@@ -100,12 +105,21 @@ class GalleryActivity : AppCompatActivity() {
             if (store.size() == 0) return@setOnClickListener
             PreviewActivity.store = store
             PreviewActivity.itemMap = itemById
-            PreviewActivity.startOriginal = findViewById<CheckBox>(R.id.cbOriginal).isChecked
+            PreviewActivity.startOriginal = originalOn
             previewLauncher.launch(Intent(this, PreviewActivity::class.java))
         }
 
+        // 原图 / 打包 空心圆开关（相互独立）
+        ivOriginal = findViewById(R.id.ivOriginal)
+        ivPackage = findViewById(R.id.ivPackage)
+        findViewById<View>(R.id.layOriginal).setOnClickListener { setOriginal(!originalOn) }
+        findViewById<View>(R.id.layPackage).setOnClickListener { setPackage(!packageOn) }
+        originalOn = SettingsRepository.get(this).sendOriginal
+        packageOn = SettingsRepository.get(this).sendPackage
+        setOriginal(originalOn)
+        setPackage(packageOn)
+
         findViewById<View>(R.id.btnBack).setOnClickListener { finish() }
-        findViewById<CheckBox>(R.id.cbOriginal).isChecked = SettingsRepository.get(this).sendOriginal
         btnSend.setOnClickListener { send() }
         refreshSendUi() // 初始「发送(0)→发送」，避免 XML 里 %1$d 字面量露出
         findViewById<View>(R.id.tvHint).setOnLongClickListener {
@@ -220,6 +234,20 @@ class GalleryActivity : AppCompatActivity() {
         else -> "bin"
     }
 
+    /** 原图空心圆状态切换（白描边空心圆 <-> 绿色实心圆） */
+    private fun setOriginal(on: Boolean) {
+        originalOn = on
+        ivOriginal.setBackgroundResource(if (on) R.drawable.bg_toggle_on else R.drawable.bg_toggle_off)
+        SettingsRepository.get(this).sendOriginal = on
+    }
+
+    /** 打包空心圆状态切换（与原图独立） */
+    private fun setPackage(on: Boolean) {
+        packageOn = on
+        ivPackage.setBackgroundResource(if (on) R.drawable.bg_toggle_on else R.drawable.bg_toggle_off)
+        SettingsRepository.get(this).sendPackage = on
+    }
+
     private fun send() {
         if (store.size() == 0) return
         val files = ArrayList<String>()
@@ -245,7 +273,8 @@ class GalleryActivity : AppCompatActivity() {
         if (files.isEmpty()) return
         intent.putExtra(RESULT_FILES, files)
         intent.putExtra(RESULT_NAMES, names)
-        intent.putExtra(RESULT_ORIGINAL, findViewById<CheckBox>(R.id.cbOriginal).isChecked)
+        intent.putExtra(RESULT_ORIGINAL, originalOn)
+        intent.putExtra(RESULT_PACKAGE, packageOn)
         setResult(RESULT_OK, intent)
         finish()
     }

@@ -25,14 +25,18 @@
         android:paddingVertical="2dp"
         android:background="?attr/selectableItemBackground">
 
-        <!-- 多选复选框（多选模式显示，点整行切换） -->
-        <View
+        <!-- 多选空心圆：未选=灰描边空心圆，选中=绿实心+白✓ -->
+        <TextView
             android:id="@+id/cbSelect"
-            android:layout_width="20dp"
-            android:layout_height="20dp"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
             android:layout_gravity="center_vertical"
-            android:layout_marginEnd="8dp"
-            android:background="@drawable/bg_circle_unchecked"
+            android:layout_marginEnd="10dp"
+            android:gravity="center"
+            android:textColor="@color/n_white"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:background="@drawable/bg_select_off"
             android:visibility="gone" />
 
         <!-- 气泡 -->
@@ -54,7 +58,7 @@
                 android:textIsSelectable="true"
                 android:visibility="gone" />
 
-            <!-- 图片/视频预览：200dp 的 70% = 140dp（v1.1.5 双端统一缩小 30%） -->
+            <!-- 图片/视频预览：按实际长宽比，max 240×320，不再强制正方形（需求①） -->
             <FrameLayout
                 android:id="@+id/imageWrap"
                 android:layout_width="wrap_content"
@@ -63,16 +67,19 @@
 
                 <ImageView
                     android:id="@+id/ivImage"
-                    android:layout_width="140dp"
-                    android:layout_height="140dp"
-                    android:scaleType="centerCrop"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:maxWidth="240dp"
+                    android:maxHeight="320dp"
+                    android:adjustViewBounds="true"
+                    android:scaleType="fitCenter"
                     android:contentDescription="@null" />
 
-                <!-- 视频播放角标：仅视频消息显示，点击用系统播放器打开 -->
+                <!-- 视频播放角标：覆盖整个视频区域 -->
                 <TextView
                     android:id="@+id/tvPlay"
-                    android:layout_width="140dp"
-                    android:layout_height="140dp"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
                     android:gravity="center"
                     android:text="▶"
                     android:textColor="@color/n_white"
@@ -92,7 +99,7 @@
                     android:id="@+id/tvFileName"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:maxWidth="140dp"
+                    android:maxWidth="200dp"
                     android:textColor="@color/semantic_link"
                     android:textSize="@dimen/font_body" />
 

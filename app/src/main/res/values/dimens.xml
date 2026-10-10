@@ -7,4 +7,6 @@
     <dimen name="font_caption">12sp</dimen>
     <dimen name="toolbar_height">56dp</dimen>
     <dimen name="bubble_max_width">280dp</dimen>
+    <!-- 选择页原图/打包 空心圆直径，跟随工具栏高度可调 -->
+    <dimen name="gallery_toggle_size">22dp</dimen>
 </resources>

@@ -72,7 +72,7 @@
             android:layout_height="48dp"
             android:gravity="center"
             android:paddingHorizontal="12dp"
-            android:text="✕"
+            android:text="取消"
             android:textSize="@dimen/font_title"
             android:background="?attr/selectableItemBackgroundBorderless" />
 
@@ -96,37 +96,49 @@
             android:background="?attr/selectableItemBackground" />
     </LinearLayout>
 
-    <!-- 底部操作栏（多选时替换输入区+工具条） -->
+    <!-- 底部操作栏（多选时替换输入区+工具条）：保存 / 转发 / 复制 / 删除 -->
     <LinearLayout
         android:id="@+id/selectionActionBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
+        android:gravity="center_vertical"
         android:background="@color/n_surface"
         android:padding="8dp"
         android:visibility="gone">
-
-        <TextView
-            android:id="@+id/btnShareBatch"
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_height="48dp"
-            android:layout_marginEnd="6dp"
-            android:gravity="center"
-            android:text="@string/menu_share_wechat"
-            android:textColor="@color/n_white"
-            android:background="@drawable/bg_btn_primary" />
 
         <TextView
             android:id="@+id/btnSaveBatch"
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="48dp"
-            android:layout_marginEnd="6dp"
             android:gravity="center"
             android:text="@string/menu_save"
-            android:textColor="@color/green_700"
-            android:background="@drawable/bg_composer" />
+            android:textColor="@color/n_text_primary"
+            android:textSize="@dimen/font_body"
+            android:background="?attr/selectableItemBackground" />
+
+        <TextView
+            android:id="@+id/btnForwardBatch"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="48dp"
+            android:gravity="center"
+            android:text="@string/menu_forward"
+            android:textColor="@color/n_text_primary"
+            android:textSize="@dimen/font_body"
+            android:background="?attr/selectableItemBackground" />
+
+        <TextView
+            android:id="@+id/btnCopyBatch"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="48dp"
+            android:gravity="center"
+            android:text="@string/menu_copy"
+            android:textColor="@color/n_text_primary"
+            android:textSize="@dimen/font_body"
+            android:background="?attr/selectableItemBackground" />
 
         <TextView
             android:id="@+id/btnDeleteBatch"
@@ -135,8 +147,9 @@
             android:layout_height="48dp"
             android:gravity="center"
             android:text="@string/menu_delete"
-            android:textColor="@color/n_white"
-            android:background="@drawable/bg_btn_primary" />
+            android:textColor="@color/danger_text"
+            android:textSize="@dimen/font_body"
+            android:background="?attr/selectableItemBackground" />
     </LinearLayout>
 
     <!-- 工具条（安卓四项：发文件/发照片/设置/清空，末位标红） -->
