@@ -91,27 +91,61 @@
                     android:visibility="gone" />
             </FrameLayout>
 
+            <!-- 文件消息（v1.1.9d 微信样式）：文件名+大小在左，格式图标在右。
+                 图标=彩色页面形（按扩展名选 ic_file_*），字母徽标（PDF/W/X/P/?）由
+                 tvFileBadge 覆盖显示；TXT/ZIP/音频的图形已画进图标内，徽标隐藏。 -->
             <LinearLayout
                 android:id="@+id/fileRow"
-                android:layout_width="wrap_content"
+                android:layout_width="224dp"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
                 android:visibility="gone">
 
-                <TextView
-                    android:id="@+id/tvFileName"
-                    android:layout_width="wrap_content"
+                <LinearLayout
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:maxWidth="200dp"
-                    android:textColor="@color/brand_700"
-                    android:textSize="@dimen/font_body" />
+                    android:layout_weight="1"
+                    android:orientation="vertical">
 
-                <TextView
-                    android:id="@+id/tvFileSize"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textColor="@color/n_text_secondary"
-                    android:textSize="@dimen/font_caption" />
+                    <TextView
+                        android:id="@+id/tvFileName"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/n_text_primary"
+                        android:textSize="@dimen/font_body"
+                        android:maxLines="2"
+                        android:ellipsize="end" />
+
+                    <TextView
+                        android:id="@+id/tvFileSize"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="3dp"
+                        android:textColor="@color/n_text_secondary"
+                        android:textSize="@dimen/font_caption" />
+                </LinearLayout>
+
+                <FrameLayout
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_marginStart="10dp">
+
+                    <ImageView
+                        android:id="@+id/ivFileIcon"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:contentDescription="@null" />
+
+                    <TextView
+                        android:id="@+id/tvFileBadge"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:textColor="@color/n_white"
+                        android:textStyle="bold"
+                        android:visibility="gone" />
+                </FrameLayout>
             </LinearLayout>
 
             <ProgressBar

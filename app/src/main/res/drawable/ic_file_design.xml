@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v1.1.9d 文件图标：设计稿 psd/ai/cdr 等（图层堆叠） -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="40dp" android:height="40dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#D4537E" android:pathData="M5.5,2.5 H14 L19.5,8 V21.5 H5.5 Z" />
+    <path android:fillColor="#B0365E" android:pathData="M14,2.5 V8 H19.5 Z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M12,6.5 L15.5,8.5 L12,10.5 L8.5,8.5 Z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M12,10 L15.5,12 L12,14 L8.5,12 Z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M12,13.5 L15.5,15.5 L12,17.5 L8.5,15.5 Z" />
+</vector>

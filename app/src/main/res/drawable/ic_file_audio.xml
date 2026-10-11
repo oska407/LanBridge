@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v1.1.9d 文件图标（微信样式）：音频灰色页面 + 白色声波条（无徽标文字） -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="40dp" android:height="40dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#C3C9CF"
+        android:pathData="M5.5,2.5 H14 L19.5,8 V21.5 H5.5 Z" />
+    <path android:fillColor="#A5ACB4"
+        android:pathData="M14,2.5 V8 H19.5 Z" />
+    <!-- 声波：四根高低起伏的竖条 -->
+    <path android:fillColor="#FFFFFF" android:pathData="M8.4,12.4 H9.5 V15.4 H8.4 Z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M10.35,10.6 H11.45 V17.2 H10.35 Z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M12.3,9.4 H13.4 V18.4 H12.3 Z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M14.25,11.6 H15.35 V16.2 H14.25 Z" />
+</vector>

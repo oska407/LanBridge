@@ -425,11 +425,19 @@ class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Cal
 
     private fun batchDelete() {
         val ids = selection.selectedIds.toSet()
+        val fileIds = synchronized(SessionState.messages) {
+            SessionState.messages.filter { ids.contains(it.id) }.mapNotNull { it.fileRef?.id }
+        }
+        // 删除「传输副本」(FileStore 内 $id.part)，绝不删除源文件(localPath)
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            fileIds.forEach { runCatching { TransferEngine.fileStore.deleteTemp(it) } }
+        }
         synchronized(SessionState.messages) {
             SessionState.messages.removeAll { ids.contains(it.id) }
         }
         selection.exit()
         SessionState.notifyChanged()
+        Toast.makeText(this, getString(R.string.deleted_n, ids.size), Toast.LENGTH_SHORT).show()
     }
 
     // ---- ChatAdapter.Callbacks / MessageMenu.Callbacks ----
@@ -501,8 +509,15 @@ class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Cal
     override fun onMultiSelect(msg: Message) { selection.enter(msg) } // 进入多选并默认勾选长按的那条（一次刷新）
 
     override fun onDelete(msg: Message) {
+        // 删除=仅移除聊天显示 + 删除「传输副本」(FileStore 内 $id.part)，绝不删除源文件(localPath)
+        msg.fileRef?.id?.let { id ->
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                runCatching { TransferEngine.fileStore.deleteTemp(id) }
+            }
+        }
         synchronized(SessionState.messages) { SessionState.messages.remove(msg) }
         SessionState.notifyChanged()
+        Toast.makeText(this, R.string.deleted, Toast.LENGTH_SHORT).show()
     }
 
     override fun onLongPress(v: View, msg: Message) {

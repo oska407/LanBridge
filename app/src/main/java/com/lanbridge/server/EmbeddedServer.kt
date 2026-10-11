@@ -16,6 +16,7 @@ import io.ktor.server.request.receiveChannel
 import io.ktor.server.response.header
 import io.ktor.server.response.respondBytesWriter
 import io.ktor.server.response.respondText
+import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
@@ -111,10 +112,9 @@ class EmbeddedServer(
                                 }
                             }
                             is WsMsg.FileReady -> {
-                                // 转发成功即清内部拷贝（F-20 AC12）
-                                SessionState.transfers[msg.fileId]?.localPath?.let { p ->
-                                    File(p).takeIf { it.exists() }?.delete()
-                                }
+                                // 转发/接收完成即清「传输副本」(FileStore 内 $id.part)，绝不删除源文件(localPath)
+                                SessionState.transfers.remove(msg.fileId)
+                                fileStore.deleteTemp(msg.fileId)
                             }
                             else -> {}
                         }
@@ -201,6 +201,14 @@ class EmbeddedServer(
                     }
                 }
             }
+        }
+
+        // 删除「传输副本」：仅删服务端 FileStore 内的 $id.part，绝不触及用户源文件（PC 本地原文件不在服务端）
+        delete("/api/files/{id}") {
+            val id = call.parameters["id"] ?: return@delete call.respondText(
+                "bad id", status = HttpStatusCode.BadRequest)
+            fileStore.deleteTemp(id)
+            call.respondText("""{"ok":true}""", ContentType.Application.Json)
         }
     }
 

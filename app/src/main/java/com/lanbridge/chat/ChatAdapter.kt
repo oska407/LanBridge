@@ -124,10 +124,13 @@ class ChatAdapter(
                 h.tvText.visibility = if (msg.type == MsgType.TEXT) View.VISIBLE else View.GONE
                 if (msg.type == MsgType.TEXT) h.tvText.text = msg.text
 
-                h.fileRow.visibility = if (msg.type == MsgType.FILE) View.VISIBLE else View.GONE
+                // 视频按微信样式只显缩略图+播放角标，不叠文件卡（文件卡含文件名+大小+问号，冗余）
+                h.fileRow.visibility = if (msg.type == MsgType.FILE && msg.fileRef?.kind != "video") View.VISIBLE else View.GONE
                 if (msg.type == MsgType.FILE) {
-                    h.tvFileName.text = msg.fileRef?.name.orEmpty()
+                    val name = msg.fileRef?.name.orEmpty()
+                    h.tvFileName.text = name
                     h.tvFileSize.text = formatSize(msg.fileRef?.size ?: 0)
+                    bindFileIcon(h, name)
                 }
 
                 // 图片 / 视频（视频是 FILE 类型但 kind=video：取首帧 + 播放角标）
@@ -236,6 +239,48 @@ class ChatAdapter(
         }
     }
 
+    /**
+     * v1.1.9d 微信样式文件图标：按扩展名选彩色页面图标。
+     * 字母徽标（PDF/W/X/P/?）由 tvFileBadge 覆盖显示；TXT/ZIP/音频的图形已画进图标。
+     * 注意：每个 FILE bind 都必须同时重设图标和徽标（VH 复用防残留）。
+     */
+    private fun bindFileIcon(h: VH, name: String) {
+        val ext = name.substringAfterLast('.', "").lowercase(Locale.ROOT)
+        var res = R.drawable.ic_file_generic
+        var badge: String? = "?"
+        var small = false
+        when (ext) {
+            "pdf" -> { res = R.drawable.ic_file_pdf; badge = "PDF"; small = true }
+            "doc", "docx", "wps", "rtf", "odt" -> { res = R.drawable.ic_file_doc; badge = "W" }
+            "xls", "xlsx", "et", "csv", "ods" -> { res = R.drawable.ic_file_xls; badge = "X" }
+            "ppt", "pptx", "dps", "odp" -> { res = R.drawable.ic_file_ppt; badge = "P" }
+            "txt", "md", "log" -> { res = R.drawable.ic_file_txt; badge = null }
+            "zip", "rar", "7z", "tar", "gz" -> { res = R.drawable.ic_file_zip; badge = null }
+            "mp3", "wav", "flac", "aac", "m4a", "ogg", "amr" -> { res = R.drawable.ic_file_audio; badge = null }
+            // v1.1.9d 新增：安装包 / 电子书 / 网页代码 / 设计稿 / 种子 / CAD / 联系人 / 日历
+            "exe", "msi", "dmg", "deb", "AppImage", "pkg" -> { res = R.drawable.ic_file_installer; badge = null }
+            "epub", "mobi", "azw", "azw3", "kfx" -> { res = R.drawable.ic_file_ebook; badge = null }
+            "html", "htm", "css", "js", "ts", "jsx", "vue", "php", "json", "xml" -> { res = R.drawable.ic_file_webcode; badge = null }
+            "psd", "ai", "cdr", "sketch", "xd" -> { res = R.drawable.ic_file_design; badge = null }
+            "torrent" -> { res = R.drawable.ic_file_torrent; badge = null }
+            "dwg", "dxf", "skp", "skb", "3ds", "obj", "fbx", "stl", "step", "stp",
+            "igs", "iges", "dae", "blend", "max", "c4d", "rvt", "sldprt", "sldasm",
+            "ipt", "iam", "sat", "scad" -> { res = R.drawable.ic_file_cad; badge = null }
+            "vcf" -> { res = R.drawable.ic_file_contact; badge = null }
+            "ics" -> { res = R.drawable.ic_file_calendar; badge = null }
+            // apk 与其它未知格式统一走灰色页面 + 问号（ic_file_generic）
+        }
+        h.ivFileIcon.setImageResource(res)
+        if (badge == null) {
+            h.tvFileBadge.visibility = View.GONE
+        } else {
+            h.tvFileBadge.visibility = View.VISIBLE
+            h.tvFileBadge.text = badge
+            // 多字母徽标（PDF）用小号，单字母/问号用大号
+            h.tvFileBadge.textSize = if (small) 8f else 14f
+        }
+    }
+
     private fun formatSize(bytes: Long): String = when {
         bytes >= 1 shl 20 -> "%.1f MB".format(bytes / 1048576f)
         bytes >= 1 shl 10 -> "%.1f KB".format(bytes / 1024f)
@@ -253,6 +298,8 @@ class ChatAdapter(
         val fileRow: View = v.findViewById(R.id.fileRow)
         val tvFileName: TextView = v.findViewById(R.id.tvFileName)
         val tvFileSize: TextView = v.findViewById(R.id.tvFileSize)
+        val ivFileIcon: android.widget.ImageView = v.findViewById(R.id.ivFileIcon)
+        val tvFileBadge: TextView = v.findViewById(R.id.tvFileBadge)
         val progress: android.widget.ProgressBar = v.findViewById(R.id.progress)
         val tvStatus: TextView = v.findViewById(R.id.tvStatus)
         val btnResend: TextView = v.findViewById(R.id.btnResend)

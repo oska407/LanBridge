@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v1.1.9d 文件图标：日历 ics（日历本） -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="40dp" android:height="40dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#5C6BC0" android:pathData="M5.5,2.5 H14 L19.5,8 V21.5 H5.5 Z" />
+    <path android:fillColor="#4454A0" android:pathData="M14,2.5 V8 H19.5 Z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M7,8.5 H17 V18 H7 Z" />
+    <path android:fillColor="#5C6BC0" android:pathData="M9.6,6.5 h1.4 v2 h-1.4 Z" />
+    <path android:fillColor="#5C6BC0" android:pathData="M13,6.5 h1.4 v2 h-1.4 Z" />
+    <path android:fillColor="#5C6BC0" android:pathData="M10,13 h4 v4 h-4 Z" />
+</vector>

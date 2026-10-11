@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v1.1.9d 文件图标（微信样式）：TXT 灰色页面 + 白色文本行（无徽标文字） -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="40dp" android:height="40dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#C3C9CF"
+        android:pathData="M5.5,2.5 H14 L19.5,8 V21.5 H5.5 Z" />
+    <path android:fillColor="#A5ACB4"
+        android:pathData="M14,2.5 V8 H19.5 Z" />
+    <!-- 文本行：两整行 + 一短行 -->
+    <path android:fillColor="#FFFFFF" android:pathData="M8.5,12.2 H15.5 V13.4 H8.5 Z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M8.5,14.8 H15.5 V16 H8.5 Z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M8.5,17.4 H13 V18.6 H8.5 Z" />
+</vector>

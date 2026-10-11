@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v1.1.9d 文件图标：种子 torrent（下载箭头+托盘） -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="40dp" android:height="40dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#2EA8C9" android:pathData="M5.5,2.5 H14 L19.5,8 V21.5 H5.5 Z" />
+    <path android:fillColor="#1E86A6" android:pathData="M14,2.5 V8 H19.5 Z" />
+    <path android:fillColor="#FFFFFF" android:strokeColor="#FFFFFF" android:strokeWidth="1.6"
+        android:strokeLinecap="round" android:pathData="M12,6 V11.5" />
+    <path android:fillColor="#FFFFFF" android:pathData="M8.5,10 L12,13.5 L15.5,10 Z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M7.5,15 H16.5 V18 H7.5 Z" />
+</vector>

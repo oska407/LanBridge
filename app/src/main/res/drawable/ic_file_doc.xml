@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v1.1.9d 文件图标（微信样式）：Word 蓝色页面，徽标文字 W 由 tvFileBadge 显示 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="40dp" android:height="40dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#4A89F3"
+        android:pathData="M5.5,2.5 H14 L19.5,8 V21.5 H5.5 Z" />
+    <path android:fillColor="#3568CE"
+        android:pathData="M14,2.5 V8 H19.5 Z" />
+</vector>
