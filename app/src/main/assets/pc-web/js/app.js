@@ -498,8 +498,8 @@ function renderSelBar() {
   mk('删除', deleteSelected, 'danger');
   bar.classList.remove('hidden');
 }
-function saveSelected() { selected.forEach(id => { const row = document.querySelector(`.row[data-id="${id}"]`); const m = row && row._m; if (m) download(m); }); }
-function copySelected() { selected.forEach(id => { const row = document.querySelector(`.row[data-id="${id}"]`); const m = row && row._m; if (m) copyItem(m); }); }
+function saveSelected() { selected.forEach(id => { const row = document.querySelector(`.row[data-id="${id}"]`); const m = row && row._m; if (m) download(m); }); exitSelection(); } // 保存后退出多选，恢复普通界面
+function copySelected() { selected.forEach(id => { const row = document.querySelector(`.row[data-id="${id}"]`); const m = row && row._m; if (m) copyItem(m); }); exitSelection(); } // 复制后退出多选，恢复普通界面
 function deleteSelected() {
   const n = selected.size;
   selected.forEach(id => { const row = document.querySelector(`.row[data-id="${id}"]`); if (row) { purgeFile(row._m); row.remove(); } });

@@ -377,6 +377,8 @@ class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Cal
     /** 批量转发降级（F-03 AC4）：全图一次多发；含文件逐个分享（提示）；全文字合并一段 */
     private fun batchShare() {
         val msgs = selectedMessages()
+        if (msgs.isEmpty()) return
+        selection.exit() // 批量转发后退出多选，恢复普通界面（用户要求：操作后多选显示自动消失）
         val texts = msgs.filter { it.type == com.lanbridge.model.MsgType.TEXT }.map { it.text }
         val images = msgs.mapNotNull { it.fileRef }.filter { it.kind == "image" }
             .mapNotNull { it.localPath }.map { java.io.File(it) }.filter { it.exists() }
@@ -397,6 +399,8 @@ class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Cal
 
     private fun batchSave() {
         val msgs = selectedMessages()
+        if (msgs.isEmpty()) return
+        selection.exit() // 批量保存后退出多选，恢复普通界面（用户要求：操作后多选显示自动消失）
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
             var ok = 0
             msgs.forEach { m ->
@@ -418,6 +422,7 @@ class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Cal
             Toast.makeText(this, "没有可复制的文字", Toast.LENGTH_SHORT).show()
             return
         }
+        selection.exit() // 批量复制后退出多选，恢复普通界面（用户要求：操作后多选显示自动消失）
         val cm = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
         cm.setPrimaryClip(ClipData.newPlainText("lanbridge_batch", texts.joinToString("\n")))
         Toast.makeText(this, "已复制 ${texts.size} 条文字", Toast.LENGTH_SHORT).show()

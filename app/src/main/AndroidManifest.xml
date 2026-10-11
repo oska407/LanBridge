@@ -11,6 +11,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- 后台运行保活：引导用户把本应用加入电池优化白名单，避免后台被杀导致网页端无法下载 -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <!-- 媒体（按需申请，不做一次性全量弹窗） -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />

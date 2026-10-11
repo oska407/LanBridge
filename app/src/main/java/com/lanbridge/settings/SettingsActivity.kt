@@ -1,8 +1,12 @@
 package com.lanbridge.settings
 
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.os.PowerManager
+import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -90,6 +94,9 @@ class SettingsActivity : AppCompatActivity() {
 
         rows.add(Row.Group(getString(R.string.settings_group_transfer)))
         rows.add(Row.Item(getString(R.string.settings_group_transfer), "单次传输上限", "500MB（只读）"))
+        rows.add(Row.Item(getString(R.string.settings_group_transfer), "后台运行保活",
+            "把本应用加入电池优化白名单：离开 App（在其它界面/切到后台）网页端也能下载聊天文件",
+            Row.Kind.ACTION, onClick = { requestBatteryExemption() }))
         rows.add(Row.Item(getString(R.string.settings_group_transfer), getString(R.string.settings_auto_stop),
             "传输完成后自动停止服务 · 立即生效", Row.Kind.SWITCH, checked = repo.autoStopAfterTransfer,
             onSwitch = { repo.autoStopAfterTransfer = it }))
@@ -166,6 +173,37 @@ class SettingsActivity : AppCompatActivity() {
         BridgeForegroundService.start(this)
         Toast.makeText(this, "地址已变更，请通知 PC 端重新打开", Toast.LENGTH_LONG).show()
         buildRows()
+    }
+
+    /**
+     * 后台运行保活（需求③）：引导把本应用加入电池优化白名单。
+     * 前台服务在 App 切到后台后可能被系统（尤其小米/华为/OPPO/VIVO 等）杀掉，
+     * 导致网页端无法下载聊天文件。加入白名单后，只要 App 没被主动关闭，后台也能下载。
+     */
+    private fun requestBatteryExemption() {
+        if (Build.VERSION.SDK_INT < 23) {
+            Toast.makeText(this, "此系统无需设置", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+        if (pm.isIgnoringBatteryOptimizations(packageName)) {
+            Toast.makeText(this, "已在电池优化白名单，后台下载不受限", Toast.LENGTH_SHORT).show()
+            return
+        }
+        try {
+            // 直接弹出本应用的电池优化豁免对话框（需 REQUEST_IGNORE_BATTERY_OPTIMIZATIONS 权限）
+            startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                .setData(Uri.parse("package:$packageName")))
+            Toast.makeText(this, "请在弹窗中选择「允许」，以保证后台下载", Toast.LENGTH_LONG).show()
+        } catch (e: Exception) {
+            // 部分系统无该深度接口，回退到电池优化总设置页，由用户手动找到本应用
+            try {
+                startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                Toast.makeText(this, "请在列表中找到 LanBridge 并设为「未优化」", Toast.LENGTH_LONG).show()
+            } catch (_: Exception) {
+                Toast.makeText(this, "无法打开电池设置，请手动设置", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private fun pickLongSide() {
