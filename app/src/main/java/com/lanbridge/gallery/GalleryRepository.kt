@@ -11,9 +11,11 @@ import android.provider.MediaStore
  * MediaStore 查询（T14）：按 BUCKET 分组 + 内存分页切片。
  * 全部图文视频走 MediaStore.Files 单查询（media_type IN (1,3)），图文混排顺序稳定。
  *
- * v1.1.9g（需求：图库顺序与 v1.1.9f 显示的完全相反）：
- *  - 排序方向整体反转：由「从新到旧」改为「从旧到新」（sortKey 升序，同刻 id 降序，
- *    与 v1.1.9f 的排列互为镜像）。查询/分页/缓存逻辑不变，仅 sortDesc → sortAsc。
+ * v1.1.9g（修订，不升版本）：
+ *  - 撤回「顺序反转」：维持 v1.1.9f 的从新到旧（用户确认反转是提错了）。
+ *  - 修复右上角切换相册无效（v1.1.9f 引入）：单桶查询 selection 误写为
+ *    "media_type IN (?,?) AND bucket_id"（缺 "= ?"，2 占位符对 3 绑定参数），
+ *    SQLite 绑定异常被 runCatching 吞掉 → 选中任何相册网格必空白。补上 "= ?"。
  *
  * v1.1.9f（需求：图库从新到旧）：
  *  - 排序键改为「拍摄时间优先」：DATE_TAKEN（毫秒）> 0 用拍摄时间，否则回退
@@ -127,7 +129,7 @@ class GalleryRepository(private val ctx: Context) {
             if (!allLoaded) {
                 allCache.clear()
                 volumes.forEach { vol -> collectQuery(filesUri(vol), vol, null, null, allCache) }
-                sortAsc(allCache)
+                sortDesc(allCache)
                 allLoaded = true
             }
             allCache.drop(offset).take(limit)
@@ -137,19 +139,19 @@ class GalleryRepository(private val ctx: Context) {
             val list = bucketCache.getOrPut(key) {
                 val out = mutableListOf<MediaItem>()
                 collectQuery(filesUri(bucket.volume), bucket.volume,
-                    "media_type IN (?,?) AND bucket_id",
+                    "media_type IN (?,?) AND bucket_id = ?", // v1.1.9g：补 "= ?"（原缺占位符致单桶查询必失败）
                     arrayOf("${MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE}",
                         "${MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO}", "${bucket.id}"), out)
-                sortAsc(out)
+                sortDesc(out)
                 out
             }
             list.drop(offset).take(limit)
         }
     }
 
-    /** v1.1.9g：从旧到新（与 v1.1.9f 的从新到旧互为镜像）：sortKey 升序，同刻按 id 降序 */
-    private fun sortAsc(list: MutableList<MediaItem>) {
-        list.sortWith(compareBy<MediaItem> { it.sortKey }.thenByDescending { it.id })
+    /** 从新到旧（v1.1.9g 撤回反转，恢复 v1.1.9f 行为）：拍摄时间优先，同刻按 id 稳定排序 */
+    private fun sortDesc(list: MutableList<MediaItem>) {
+        list.sortWith(compareByDescending<MediaItem> { it.sortKey }.thenBy { it.id })
     }
 
     /** 整卷（可选 bucket 过滤）全量收集。
