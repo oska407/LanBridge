@@ -11,6 +11,13 @@ import android.provider.MediaStore
  * MediaStore 查询（T14）：按 BUCKET 分组 + 内存分页切片。
  * 全部图文视频走 MediaStore.Files 单查询（media_type IN (1,3)），图文混排顺序稳定。
  *
+ * v1.1.9h（需求：排序与微信完全一致）：
+ *  - 排序键改为「文件修改时间（DATE_MODIFIED）优先」——微信/QQ 等第三方选择器不读 EXIF
+ *    拍摄时间，一律按最后修改时间从新到旧。兜底链：修改时间 → 拍摄时间 → 入库时间。
+ *  - 解决现象：微信拷入/剥离 EXIF 的图 DATE_TAKEN=0 回退 DATE_ADDED，而重扫/手机克隆
+ *    会把入库时间刷成今天，导致 2020 年的老照片顶到列表最前（微信里却在正确位置）。
+ *  - DATE_MODIFIED 全 Android 版本可用，比 DATE_TAKEN 更可靠（部分 ROM 将其清零）。
+ *
  * v1.1.9g（修订，不升版本）：
  *  - 撤回「顺序反转」：维持 v1.1.9f 的从新到旧（用户确认反转是提错了）。
  *  - 修复右上角切换相册无效（v1.1.9f 引入）：单桶查询 selection 误写为
@@ -42,9 +49,19 @@ class GalleryRepository(private val ctx: Context) {
         val volume: String = VOLUME_MAIN, val relPath: String = "",
         val dateAdded: Long = 0,
         val dateTaken: Long = 0, // 拍摄时间（毫秒；无 EXIF 时为 0）
+        val dateModified: Long = 0, // 文件修改时间（秒）
     ) {
-        /** 排序键：拍摄时间优先，无则回退入库时间（DATE_ADDED 为秒，统一到毫秒） */
-        val sortKey: Long = if (dateTaken > 0) dateTaken else dateAdded * 1000
+        /**
+         * 排序键（v1.1.9h：改用「修改时间优先」，与微信一致）。
+         * 微信/QQ 等第三方选择器不读 EXIF 拍摄时间，一律按文件最后修改时间（mtime）从新到旧；
+         * 改为 DATE_MODIFIED 后，重扫/克隆导致入库时间刷新的老照片不再顶到最前。
+         * 兜底链：修改时间（若 ROM 未给出）→ 拍摄时间 → 入库时间。
+         */
+        val sortKey: Long = when {
+            dateModified > 0 -> dateModified * 1000
+            dateTaken > 0 -> dateTaken
+            else -> dateAdded * 1000
+        }
     }
     data class Bucket(val id: Long, val name: String, val count: Int, val volume: String = VOLUME_MAIN)
 
@@ -149,7 +166,7 @@ class GalleryRepository(private val ctx: Context) {
         }
     }
 
-    /** 从新到旧（v1.1.9g 撤回反转，恢复 v1.1.9f 行为）：拍摄时间优先，同刻按 id 稳定排序 */
+    /** 从新到旧（v1.1.9h：按修改时间，与微信一致）：见 MediaItem.sortKey 的取值优先级 */
     private fun sortDesc(list: MutableList<MediaItem>) {
         list.sortWith(compareByDescending<MediaItem> { it.sortKey }.thenBy { it.id })
     }
@@ -174,6 +191,7 @@ class GalleryRepository(private val ctx: Context) {
         add(MediaStore.Files.FileColumns.MEDIA_TYPE)
         add(MediaStore.MediaColumns.DISPLAY_NAME)
         add(MediaStore.MediaColumns.DATE_ADDED)
+        add(MediaStore.MediaColumns.DATE_MODIFIED) // v1.1.9h：主排序键（微信同款，全版本可用）
         if (withTaken && !isLegacy) add(MediaStore.MediaColumns.DATE_TAKEN) // API 29+；毫秒
         if (!isLegacy) add(MediaStore.MediaColumns.RELATIVE_PATH) // API 29+，目录显示用
         add(MediaStore.MediaColumns.DATA) // 兜底：legacy 由完整路径推导目录
@@ -187,6 +205,7 @@ class GalleryRepository(private val ctx: Context) {
         val iType = c.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MEDIA_TYPE)
         val iName = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
         val iDate = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_ADDED)
+        val iMod = c.getColumnIndex(MediaStore.MediaColumns.DATE_MODIFIED) // 理论上必有，缺失返回 -1
         // getColumnIndex（非 OrThrow）：列缺失返回 -1，走 DATE_ADDED 回退，绝不让单列缺失带崩整页
         val iTaken = if (withTaken && !isLegacy) c.getColumnIndex(MediaStore.MediaColumns.DATE_TAKEN) else -1
         val iRel = if (!isLegacy) c.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH) else -1
@@ -210,6 +229,7 @@ class GalleryRepository(private val ctx: Context) {
                 uri = ContentUris.withAppendedId(typedUri(volume, isVideo), mediaId),
                 isVideo = isVideo, bucketId = c.getLong(iBucket), mime = mime, name = name,
                 volume = volume, relPath = rel, dateAdded = c.getLong(iDate),
+                dateModified = if (iMod >= 0) c.getLong(iMod) else 0L,
                 dateTaken = if (iTaken >= 0) c.getLong(iTaken) else 0L))
         }
     }
