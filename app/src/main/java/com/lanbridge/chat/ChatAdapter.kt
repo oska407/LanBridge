@@ -77,13 +77,19 @@ class ChatAdapter(
         h.tvTime.visibility = if (showTime) View.VISIBLE else View.GONE
         if (showTime) h.tvTime.text = timeFmt.format(Date(msg.ts))
 
+        // 气泡标准内边距（v1.1.9b 提前到 when 外：地址卡片分支也要用）
+        val pad = (10 * ctx.resources.displayMetrics.density).toInt()
+
         when (msg.type) {
             MsgType.SYSTEM_URL -> {
-                // v1.1.9：地址卡片必须每次显式归位左对齐——VH 复用会残留上一条消息的
-                // row.gravity=END（发出消息靠右），导致发照片/清空后卡片忽左忽右、样式漂移。
+                // v1.1.9b：地址卡片每次必须显式归位「背景+内边距+对齐」——
+                // 图片消息的复用会把 bubble 的 padding 清成 0、背景清成透明，
+                // 只恢复背景不恢复 padding 会让文字顶到框边、外框视觉失效
+                //（表现为发照片/滚动后卡片样式与刚启动时不一致）。
                 h.row.gravity = android.view.Gravity.START
                 h.bubble.gravity = android.view.Gravity.START // 卡片内文字左对齐
                 h.bubble.setBackgroundResource(R.drawable.bg_system_card)
+                h.bubble.setPadding(pad, pad, pad, pad)
                 h.tvText.visibility = View.VISIBLE
                 h.tvText.text = when (msg.connState) {
                     "connected" -> ctx.getString(R.string.connected_to, SessionState.peerIp) + "\n" + SessionState.selfUrl
@@ -107,7 +113,6 @@ class ChatAdapter(
                 val isVideo = msg.type == MsgType.FILE && msg.fileRef?.kind == "video"
                 val showImage = msg.type == MsgType.IMAGE || isVideo
                 // 图片/视频消息去掉气泡背景与 padding，避免绿/白边；文本/文件保持气泡
-                val pad = (10 * ctx.resources.displayMetrics.density).toInt()
                 if (showImage) {
                     h.bubble.setBackgroundResource(android.R.color.transparent)
                     h.bubble.setPadding(0, 0, 0, 0)
