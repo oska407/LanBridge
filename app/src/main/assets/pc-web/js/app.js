@@ -69,6 +69,21 @@ function connect() {
           showBanner('已在其他标签页打开，本页面已断开 · 点击重新连接（输入内容保留）', connect);
         }
         break;
+      case 'history': {
+        // 历史同步（v1.1.9f）：以手机端会话为准整体重建，修复"发送和接收不一致"——
+        // PC 刷新/断连期间漏掉的消息在重连后自动补齐，不再永久丢失
+        messages.length = 0;
+        selected.clear();
+        if (selectionMode) exitSelection();
+        document.querySelectorAll('#chat .row').forEach(r => r.remove());
+        (m.items || []).forEach(it => addBubble({
+          from: it.from === 'phone' ? 'in' : 'out',
+          kind: it.kind || 'file',
+          id: it.id, text: it.text, name: it.name, size: it.size, mime: it.mime,
+          url: it.url,
+        }));
+        break;
+      }
     }
   };
   ws.onclose = () => {

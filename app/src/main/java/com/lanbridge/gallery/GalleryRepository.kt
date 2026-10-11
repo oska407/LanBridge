@@ -1,22 +1,25 @@
 package com.lanbridge.gallery
 
-import android.content.ContentResolver
-import android.content.ContentUris
 import android.content.Context
+import android.content.ContentUris
 import android.net.Uri
 import android.os.Build
-import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
 
 /**
- * MediaStore 查询（T14）：按 BUCKET 分组 + 游标分页。
- * 分页统一走 MediaStore.Files 单查询（media_type IN (1,3)），图文全局按时间排序，
- * 翻页偏移不会因图片/视频分开计数而错位。
- * API 29+ 用 Bundle QUERY_ARG_LIMIT/OFFSET 标准分页；
- * API 28 旧 MediaProvider 不识别 Bundle 分页键（会忽略并全量返回），
- * 故回退为 sortOrder 直接拼 LIMIT（旧版解析安全）。
- * 绝不能在 API 29+ 把 LIMIT 写进 sortOrder——新版 MediaStore 会抛 "Invalid token LIMIT"。
+ * MediaStore 查询（T14）：按 BUCKET 分组 + 内存分页切片。
+ * 全部图文视频走 MediaStore.Files 单查询（media_type IN (1,3)），图文混排顺序稳定。
+ *
+ * v1.1.9f（需求：图库从新到旧）：
+ *  - 排序键改为「拍摄时间优先」：DATE_TAKEN（毫秒）> 0 用拍摄时间，否则回退
+ *    DATE_ADDED（秒）×1000。此前按 DATE_ADDED（入库时间）排序，wx_camera/mmexport
+ *    等微信老照片今天才入库/重扫，会被排到最前面，用户看到的是"不是从新到旧"。
+ *  - DATE_TAKEN 由扫描时从 EXIF 提取，微信拷入的图若被剥离 EXIF 则无此列值，
+ *    自动回退 DATE_ADDED，行为与旧版一致（尽力而为）。
+ *  - 分桶路径统一改为整桶载入内存排序（此前主卷桶走 MediaStore 端 LIMIT/OFFSET
+ *    Bundle 分页，无法参与拍摄时间排序；「全部」桶本就整量入内存，单桶量级更小，
+ *    内存开销可接受，且顺带规避了个别 ROM 对 Bundle 分页参数支持不全的问题）。
  *
  * v1.1.9：
  *  - SD 卡等辅助存储卷支持（需求⑥）：API 29+ 枚举 getExternalVolumeNames 逐卷查询；
@@ -24,8 +27,6 @@ import android.provider.MediaStore
  *  - MediaItem 增加 relPath（RELATIVE_PATH / DATA 推导，预览页显示目录用）。
  *  - id 跨卷唯一化：辅助卷 id = mediaId + 卷序号 × 1e12，避免与主卷 mediaId 撞车
  *    （SelectionStore / itemById 都以 Long id 为键）。
- *  - 主卷保持 MediaStore 端分页；辅助卷（条目通常很少）与「全部」桶整卷载入内存后
- *    按日期归并切片，保证跨卷时间序正确。
  */
 class GalleryRepository(private val ctx: Context) {
 
@@ -34,12 +35,16 @@ class GalleryRepository(private val ctx: Context) {
         val mime: String, val name: String,
         val volume: String = VOLUME_MAIN, val relPath: String = "",
         val dateAdded: Long = 0,
-    )
+        val dateTaken: Long = 0, // 拍摄时间（毫秒；无 EXIF 时为 0）
+    ) {
+        /** 排序键：拍摄时间优先，无则回退入库时间（DATE_ADDED 为秒，统一到毫秒） */
+        val sortKey: Long = if (dateTaken > 0) dateTaken else dateAdded * 1000
+    }
     data class Bucket(val id: Long, val name: String, val count: Int, val volume: String = VOLUME_MAIN)
 
     companion object {
         const val ALL_BUCKET_ID = -1L
-        /** 第一卷（主卷；API<29 为合并卷 external）走 MediaStore 端分页 */
+        /** 第一卷（主卷；API<29 为合并卷 external） */
         const val VOLUME_MAIN = "external"
         private const val VOL_OFFSET = 1_000_000_000_000L
     }
@@ -112,19 +117,18 @@ class GalleryRepository(private val ctx: Context) {
     private val bucketCache = HashMap<String, List<MediaItem>>()
 
     /** 分页查询（bucket.id = ALL_BUCKET_ID 表示全部图文视频）。
-     *  主卷桶：MediaStore 端 Bundle LIMIT/OFFSET 分页（API 28 拼 LIMIT）；
-     *  辅助卷桶：整卷载入内存切片；「全部」：各卷全量按日期归并后切片。 */
+     *  全部：各卷全量按拍摄时间归并排序后切片；单个桶：整桶载入内存排序后切片。 */
     fun queryPage(bucket: Bucket, offset: Int, limit: Int = 200): List<MediaItem> = when {
         bucket.id == ALL_BUCKET_ID -> {
             if (!allLoaded) {
                 allCache.clear()
                 volumes.forEach { vol -> collectQuery(filesUri(vol), vol, null, null, allCache) }
-                allCache.sortWith(compareByDescending<MediaItem> { it.dateAdded }.thenBy { it.id })
+                sortDesc(allCache)
                 allLoaded = true
             }
             allCache.drop(offset).take(limit)
         }
-        volIndexOf(bucket.volume) > 0 -> {
+        else -> {
             val key = "${bucket.volume}:${bucket.id}"
             val list = bucketCache.getOrPut(key) {
                 val out = mutableListOf<MediaItem>()
@@ -132,77 +136,53 @@ class GalleryRepository(private val ctx: Context) {
                     "media_type IN (?,?) AND bucket_id",
                     arrayOf("${MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE}",
                         "${MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO}", "${bucket.id}"), out)
-                out.sortWith(compareByDescending<MediaItem> { it.dateAdded }.thenBy { it.id })
+                sortDesc(out)
                 out
             }
             list.drop(offset).take(limit)
         }
-        else -> queryMainPaged(bucket.id, offset, limit)
     }
 
-    /** 主卷分页（原 T14 路径，单查询保证图文混排顺序与偏移一致） */
-    private fun queryMainPaged(bucketId: Long, offset: Int, limit: Int): List<MediaItem> {
-        val out = mutableListOf<MediaItem>()
-        val mainVol = if (isLegacy) VOLUME_MAIN else MediaStore.VOLUME_EXTERNAL_PRIMARY
-        val uri = filesUri(mainVol)
-        val sel: String
-        val selArgs: Array<String>
-        if (bucketId != ALL_BUCKET_ID) {
-            sel = "${MediaStore.Files.FileColumns.MEDIA_TYPE} IN (?,?) AND bucket_id=?"
-            selArgs = arrayOf(
-                "${MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE}",
-                "${MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO}", "$bucketId")
-        } else {
-            sel = "${MediaStore.Files.FileColumns.MEDIA_TYPE} IN (?,?)"
-            selArgs = arrayOf(
-                "${MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE}",
-                "${MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO}")
-        }
-        if (!isLegacy) {
-            val args = Bundle().apply {
-                putString(ContentResolver.QUERY_ARG_SQL_SELECTION, sel)
-                putStringArray(ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS, selArgs)
-                putString(ContentResolver.QUERY_ARG_SQL_SORT_ORDER,
-                    "${MediaStore.MediaColumns.DATE_ADDED} DESC")
-                putInt(ContentResolver.QUERY_ARG_LIMIT, limit)
-                putInt(ContentResolver.QUERY_ARG_OFFSET, offset)
-            }
-            ctx.contentResolver.query(uri, projection(), args, null)?.use { c -> collect(c, mainVol, out) }
-        } else {
-            ctx.contentResolver.query(uri, projection(), sel, selArgs,
-                "${MediaStore.MediaColumns.DATE_ADDED} DESC LIMIT $offset,$limit"
-            )?.use { c -> collect(c, mainVol, out) }
-        }
-        return out
+    /** 从新到旧：拍摄时间优先（毫秒），无拍摄时间回退入库时间；同刻按 id 稳定排序 */
+    private fun sortDesc(list: MutableList<MediaItem>) {
+        list.sortWith(compareByDescending<MediaItem> { it.sortKey }.thenBy { it.id })
     }
 
-    /** 整卷（可选 bucket 过滤）全量收集，用于辅助卷与「全部」桶 */
+    /** 整卷（可选 bucket 过滤）全量收集。
+     *  个别 ROM 的 Files 表不认识 date_taken 列：查询失败时去掉该列重试（仅牺牲拍摄时间排序）。 */
     private fun collectQuery(uri: Uri, volume: String, sel: String?, args: Array<String>?,
                              out: MutableList<MediaItem>) {
         runCatching {
-            ctx.contentResolver.query(uri, projection(), sel, args,
-                "${MediaStore.MediaColumns.DATE_ADDED} DESC")?.use { c -> collect(c, volume, out) }
+            ctx.contentResolver.query(uri, projection(withTaken = true), sel, args,
+                "${MediaStore.MediaColumns.DATE_ADDED} DESC")?.use { c -> collect(c, volume, out, withTaken = true) }
+        }.recoverCatching {
+            ctx.contentResolver.query(uri, projection(withTaken = false), sel, args,
+                "${MediaStore.MediaColumns.DATE_ADDED} DESC")?.use { c -> collect(c, volume, out, withTaken = false) }
         }
     }
 
-    private fun projection() = buildList {
+    private fun projection(withTaken: Boolean) = buildList {
         add(MediaStore.MediaColumns._ID)
         add("bucket_id")
         add(MediaStore.MediaColumns.MIME_TYPE)
         add(MediaStore.Files.FileColumns.MEDIA_TYPE)
         add(MediaStore.MediaColumns.DISPLAY_NAME)
         add(MediaStore.MediaColumns.DATE_ADDED)
+        if (withTaken && !isLegacy) add(MediaStore.MediaColumns.DATE_TAKEN) // API 29+；毫秒
         if (!isLegacy) add(MediaStore.MediaColumns.RELATIVE_PATH) // API 29+，目录显示用
         add(MediaStore.MediaColumns.DATA) // 兜底：legacy 由完整路径推导目录
     }.toTypedArray()
 
-    private fun collect(c: android.database.Cursor, volume: String, out: MutableList<MediaItem>) {
+    private fun collect(c: android.database.Cursor, volume: String, out: MutableList<MediaItem>,
+                        withTaken: Boolean) {
         val iId = c.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
         val iBucket = c.getColumnIndexOrThrow("bucket_id")
         val iMime = c.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE)
         val iType = c.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MEDIA_TYPE)
         val iName = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
         val iDate = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_ADDED)
+        // getColumnIndex（非 OrThrow）：列缺失返回 -1，走 DATE_ADDED 回退，绝不让单列缺失带崩整页
+        val iTaken = if (withTaken && !isLegacy) c.getColumnIndex(MediaStore.MediaColumns.DATE_TAKEN) else -1
         val iRel = if (!isLegacy) c.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH) else -1
         val iData = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA)
         val legacyRoot = Environment.getExternalStorageDirectory().absolutePath.trimEnd('/')
@@ -223,7 +203,8 @@ class GalleryRepository(private val ctx: Context) {
                 id = uniqueId(volume, mediaId),
                 uri = ContentUris.withAppendedId(typedUri(volume, isVideo), mediaId),
                 isVideo = isVideo, bucketId = c.getLong(iBucket), mime = mime, name = name,
-                volume = volume, relPath = rel, dateAdded = c.getLong(iDate)))
+                volume = volume, relPath = rel, dateAdded = c.getLong(iDate),
+                dateTaken = if (iTaken >= 0) c.getLong(iTaken) else 0L))
         }
     }
 }

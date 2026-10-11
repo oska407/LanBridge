@@ -36,18 +36,37 @@ object HotspotIp {
         if (dhcp.serverAddress == 0) null else intToIp(dhcp.serverAddress)
     }.getOrNull()
 
+    /**
+     * 网卡选择（v1.1.9f 重写优先级）：
+     * 1) Wi-Fi/热点网卡（wlan*/ap*/softap*）最优先；
+     * 2) 其余非蜂窝网卡的 192.168.*；
+     * 3) 兜底：任意非蜂窝网卡的私网地址。
+     * 此前任意网卡的 10.x 都可入选且 ".1 结尾优先"——蜂窝网卡(rmnet/ccmni/ccinet)的
+     * CGNAT 地址恰好可能以 .1 结尾，一旦抢占，服务会绑到 PC 永远不可达的蜂窝网卡上，
+     * 网络回调一触发就"服务重启→PC 断连→无法下载"。
+     */
     private fun networkInterface(): String? = runCatching {
-        val candidates = NetworkInterface.getNetworkInterfaces().asSequence()
+        val nifs = NetworkInterface.getNetworkInterfaces().asSequence()
             .filter { it.isUp && !it.isLoopback }
-            .flatMap { nif -> nif.inetAddresses.asSequence() }
+            .filter { nif -> CELLULAR_PREFIXES.none { nif.name.contains(it) } }
+            .toList()
+        fun ips(nif: NetworkInterface) = nif.inetAddresses.asSequence()
             .filterIsInstance<Inet4Address>()
             .filter { !it.isLoopbackAddress }
             .map { it.hostAddress ?: "" }
             .filter { it.startsWith("192.168.") || it.startsWith("172.") || it.startsWith("10.") }
             .toList()
-        // 热点网关通常是 .1；优先取
-        candidates.firstOrNull { it.endsWith(".1") } ?: candidates.firstOrNull()
+        val wlanIps = nifs.filter { it.name.contains("wlan") || it.name.contains("ap") }
+            .flatMap { ips(it) }
+        val lanIps = nifs.flatMap { ips(it) }
+        wlanIps.firstOrNull { it.endsWith(".1") }
+            ?: wlanIps.firstOrNull()
+            ?: lanIps.firstOrNull { it.startsWith("192.168.") }
+            ?: lanIps.firstOrNull { it.endsWith(".1") }
+            ?: lanIps.firstOrNull()
     }.getOrNull()
+
+    private val CELLULAR_PREFIXES = listOf("rmnet", "ccmni", "ccinet", "tun", "tap", "usb")
 
     private fun intToIp(addr: Int): String =
         "${addr and 0xFF}.${addr shr 8 and 0xFF}.${addr shr 16 and 0xFF}.${addr shr 24 and 0xFF}"

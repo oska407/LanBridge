@@ -13,10 +13,12 @@ import android.net.ConnectivityManager
 import android.net.LinkProperties
 import android.net.Network
 import android.net.NetworkCapabilities
+import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
+import android.os.SystemClock
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import com.lanbridge.R
@@ -45,8 +47,10 @@ class BridgeForegroundService : Service() {
         CoroutineExceptionHandler { _, e -> CrashLogger.logThrowable(e, "service-scope") })
     private var server: EmbeddedServer? = null
     private var wakeLock: PowerManager.WakeLock? = null
+    private var wifiLock: WifiManager.WifiLock? = null
     private var currentIp: String = ""
     private var netCallback: ConnectivityManager.NetworkCallback? = null
+    @Volatile private var lastRestartAt = 0L // 服务重启防抖（网络回调可能高频触发）
 
     override fun onCreate() {
         super.onCreate()
@@ -113,6 +117,11 @@ class BridgeForegroundService : Service() {
     private fun onNetworkChanged(reason: String) {
         val newIp = HotspotIp.get(this)
         if (newIp.isBlank() || newIp == currentIp) return // 抖动/未真正变化，忽略
+        // 防抖（v1.1.9f）：5 秒内不重复重启。onCapabilitiesChanged 高频回调期间
+        // 网卡枚举可能瞬时抖动，重启服务会踢掉所有 PC 连接，表现为"网络会中断、无法下载"
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastRestartAt < 5000) return
+        lastRestartAt = now
         CrashLogger.log("net", "IP 变更 $currentIp → $newIp（$reason），重启服务以生效")
         currentIp = newIp
         scope.launch {
@@ -236,6 +245,15 @@ class BridgeForegroundService : Service() {
         wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "LanBridge:transfer").apply {
             setReferenceCounted(false); acquire(30 * 60 * 1000L) // 带超时防遗漏释放
         }
+        // WifiLock（v1.1.9f）：保持 Wi-Fi 高性能模式。只有 CPU 唤醒锁时，App 切后台
+        // （如系统文件选择器、相册、锁屏）Wi-Fi 仍会进省电休眠，PC 端表现为断连/无法下载
+        if (wifiLock == null) runCatching {
+            val wm = applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+                ?: return@runCatching
+            wifiLock = wm.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "LanBridge:wifi").apply {
+                setReferenceCounted(false); acquire() // 服务存活期间持有，onDestroy 释放
+            }
+        }.onFailure { CrashLogger.logThrowable(it, "wifi-lock") }
     }
 
     override fun onDestroy() {
@@ -248,6 +266,8 @@ class BridgeForegroundService : Service() {
         netCallback = null
         server?.stop()
         wakeLock?.takeIf { it.isHeld }?.release()
+        runCatching { wifiLock?.takeIf { it.isHeld }?.release() }
+        wifiLock = null
         TransferEngine.fileStore.clearAll() // 磁盘 0 残留（T28）
         super.onDestroy()
     }

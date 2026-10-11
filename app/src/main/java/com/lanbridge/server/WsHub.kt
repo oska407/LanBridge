@@ -1,5 +1,6 @@
 package com.lanbridge.server
 
+import com.lanbridge.model.MsgType
 import com.lanbridge.model.WsMsg
 import io.ktor.server.websocket.DefaultWebSocketServerSession
 import io.ktor.websocket.Frame
@@ -8,6 +9,7 @@ import io.ktor.websocket.readText
 import io.ktor.websocket.send
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 import java.util.concurrent.atomic.AtomicReference
 
 /**
@@ -40,6 +42,25 @@ class WsHub {
         runCatching {
             session.send(Frame.Text(WsMsg.Presence(deviceName, ip).toJson().toString()))
             session.send(Frame.Text(WsMsg.Status("connected").toJson().toString()))
+        }
+        // 历史同步（v1.1.9f）：手机端会话为唯一真相源，PC 刷新/重连后自动补齐全部记录，
+        // 修复「发送和接收不一致（PC 端少文件/少消息）」——漏掉的事件不再永久丢失
+        runCatching {
+            val items = SessionState.userMessages().mapNotNull { m ->
+                JSONObject().apply {
+                    put("id", m.id)
+                    put("from", m.from) // "phone" | "pc"，与 file_meta 的 from 同语义
+                    when (m.type) {
+                        MsgType.TEXT -> { put("kind", "text"); put("text", m.text) }
+                        else -> m.fileRef?.let { f ->
+                            put("kind", f.kind.ifBlank { "file" }) // image | video | file
+                            put("name", f.name); put("mime", f.mime); put("size", f.size)
+                            put("url", "/api/files/${f.id}")
+                        } ?: return@mapNotNull null
+                    }
+                }
+            }
+            session.send(Frame.Text(WsMsg.History(items).toJson().toString()))
         }
         SessionState.setConnStatus("connected", ip)
     }

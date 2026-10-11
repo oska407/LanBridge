@@ -49,6 +49,17 @@ sealed class WsMsg {
         override fun toJson() = super.toJson().put("conn", conn)
     }
 
+    /**
+     * 历史同步（v1.1.9f，服务端→PC 单向）：WS 建连后把手机端内存会话全量下发。
+     * PC 端记录是纯内存 DOM，刷新/断连期间漏掉的 text/file_meta 事件永久丢失，
+     * 表现为"发送和接收不一致（PC 少一个文件）"。以手机端 SessionState 为唯一真相源，
+     * PC 收到 history 后整体重建视图，保证两端一致。
+     */
+    data class History(val items: List<org.json.JSONObject>) : WsMsg() {
+        override val type = "history"; override val id = UUID.randomUUID().toString()
+        override fun toJson() = super.toJson().put("items", org.json.JSONArray(items))
+    }
+
     data class Ping(override val id: String = UUID.randomUUID().toString()) : WsMsg() {
         override val type = "ping"
     }
