@@ -38,12 +38,12 @@ object HotspotIp {
 
     /**
      * 网卡选择（v1.1.9f 重写优先级）：
-     * 1) Wi-Fi/热点网卡（wlan*/ap*/softap*）最优先；
-     * 2) 其余非蜂窝网卡的 192.168.*；
+     * 1) Wi-Fi/热点网卡（wlan0、ap0、softap0 等）最优先；
+     * 2) 其余非蜂窝网卡的 192.168. 段地址；
      * 3) 兜底：任意非蜂窝网卡的私网地址。
-     * 此前任意网卡的 10.x 都可入选且 ".1 结尾优先"——蜂窝网卡(rmnet/ccmni/ccinet)的
+     * 此前任意网卡的 10.x 都可入选且「.1 结尾优先」——蜂窝网卡(rmnet/ccmni/ccinet)的
      * CGNAT 地址恰好可能以 .1 结尾，一旦抢占，服务会绑到 PC 永远不可达的蜂窝网卡上，
-     * 网络回调一触发就"服务重启→PC 断连→无法下载"。
+     * 网络回调一触发就「服务重启、PC 断连、无法下载」。
      */
     private fun networkInterface(): String? = runCatching {
         val nifs = NetworkInterface.getNetworkInterfaces().asSequence()
