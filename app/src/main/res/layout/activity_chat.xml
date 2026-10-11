@@ -201,11 +201,15 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="bottom"
-        android:padding="8dp"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="8dp"
         android:background="@color/n_surface">
 
         <!-- 发送区（v1.1.7c）：发送按钮内嵌到输入框内部右下角，
-             尺寸 40dp 胶囊，不再与输入框并排等高；EditText 右侧留 88dp 内边距避让。 -->
+             尺寸 40dp 胶囊，不再与输入框并排等高；EditText 右侧留 88dp 内边距避让。
+             v1.1.9：去掉顶部 padding（8dp→0）——工具条标签到输入框的间距
+             必须 = 图标到工具栏上缘的间距（约 13dp），之前 8dp 顶距使下方留白偏大。 -->
         <FrameLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"

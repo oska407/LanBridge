@@ -180,6 +180,7 @@ class GalleryActivity : AppCompatActivity() {
     }
 
     private fun loadBuckets() {
+        repo.invalidate() // v1.1.9：桶/全量缓存失效，重新扫描（含 SD 卡卷）
         buckets.clear()
         buckets.addAll(repo.queryBuckets())
         bucketIndex = 0
@@ -191,7 +192,7 @@ class GalleryActivity : AppCompatActivity() {
     private fun loadMore(reset: Boolean = false) {
         if (reset) pageOffset = 0
         val b = buckets.getOrNull(bucketIndex) ?: return
-        val page = repo.queryPage(b.id, pageOffset, 200)
+        val page = repo.queryPage(b, pageOffset, 200)
         if (page.isEmpty()) return
         page.forEach { itemById[it.id] = it } // 跨相册/分页累积，供预览与发送按 id 取
         adapter.submitPage(page, append = pageOffset > 0)

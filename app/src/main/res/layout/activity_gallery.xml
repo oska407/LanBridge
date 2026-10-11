@@ -144,11 +144,13 @@
         <TextView
             android:id="@+id/btnSend"
             android:layout_width="wrap_content"
-            android:layout_height="48dp"
+            android:layout_height="44dp"
             android:gravity="center"
             android:minWidth="96dp"
             android:paddingHorizontal="16dp"
+            android:text="@string/send"
             android:textColor="@color/n_white"
+            android:textSize="@dimen/font_body"
             android:background="@drawable/bg_btn_primary" />
     </LinearLayout>
 </LinearLayout>

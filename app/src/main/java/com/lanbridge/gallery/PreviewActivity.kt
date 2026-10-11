@@ -177,18 +177,30 @@ class PreviewActivity : AppCompatActivity() {
             // 按屏幕尺寸解码，fitCenter 完整显示，避免超大原图 OOM
             val dm = h.iv.resources.displayMetrics
             Glide.with(h.iv).load(item.uri).fitCenter().override(dm.widthPixels, dm.heightPixels).into(h.iv)
+            // v1.1.9（需求⑤）：显示照片名称 + 存放目录（RELATIVE_PATH，如 DCIM/Camera）
+            h.tvName.text = item.name.ifBlank { "IMG_${item.id}" }
+            h.tvFolder.text = item.relPath.trimEnd('/').ifBlank { "—" }
+            h.infoBar.visibility = if (titleBar.visibility == View.VISIBLE) View.VISIBLE else View.GONE
             h.iv.setOnClickListener { toggleBarVisibility() }
         }
-        /** 点大图显隐顶栏/底栏（微信同款，看图更沉浸） */
+        /** 点大图显隐顶栏/底栏（微信同款，看图更沉浸）；信息浮层跟随一起显隐 */
         private fun toggleBarVisibility() {
             val vis = if (titleBar.visibility == View.VISIBLE) View.GONE else View.VISIBLE
             titleBar.visibility = vis
             bottomBar.visibility = vis
             thumbs.visibility = vis
+            for (i in 0 until pager.childCount) {
+                pager.getChildAt(i).findViewById<View?>(R.id.infoBar)?.visibility = vis
+            }
         }
     }
 
-    class PagerVH(v: View) : RecyclerView.ViewHolder(v) { val iv: ImageView = v.findViewById(R.id.ivPager) }
+    class PagerVH(v: View) : RecyclerView.ViewHolder(v) {
+        val iv: ImageView = v.findViewById(R.id.ivPager)
+        val tvName: TextView = v.findViewById(R.id.tvName)
+        val tvFolder: TextView = v.findViewById(R.id.tvFolder)
+        val infoBar: View = v.findViewById(R.id.infoBar)
+    }
 
     // ---- 底部缩略图条 ----
     inner class ThumbAdapter : RecyclerView.Adapter<ThumbVH>() {

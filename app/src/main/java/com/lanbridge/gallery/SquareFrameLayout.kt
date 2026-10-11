@@ -16,6 +16,13 @@ class SquareFrameLayout @JvmOverloads constructor(
     override fun onMeasure(widthSpec: Int, heightSpec: Int) {
         super.onMeasure(widthSpec, heightSpec)
         val s = measuredWidth
+        // 关键：用最终正方形尺寸按 EXACTLY 重测一遍子 View。
+        // 之前只 super.onMeasure(原始 spec) 后直接改自身尺寸——父级传入的高度 spec 是
+        // AT_MOST（wrap_content），match_parent 的 ImageView 按旧 spec 量出偏小的高度，
+        // 布局时填不满正方形，格底露出黑边，视觉上「行距 ≠ 列距」（竖向黑带更宽）。
+        val wSpec = MeasureSpec.makeMeasureSpec(s, MeasureSpec.EXACTLY)
+        val hSpec = MeasureSpec.makeMeasureSpec(s, MeasureSpec.EXACTLY)
+        super.onMeasure(wSpec, hSpec)
         setMeasuredDimension(s, s)
     }
 }

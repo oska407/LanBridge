@@ -2,6 +2,7 @@ package com.lanbridge.settings
 
 import android.content.Intent
 import android.os.Bundle
+import android.os.Environment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -185,34 +186,97 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     /**
-     * 保存位置（v1.1.7c）：由纯手填改为「选择窗口 + 手填入入口」。
+     * 保存位置（v1.1.9）：目录树浏览窗口（需求⑦）。
      *
-     * 为什么不能直接给个系统文件选择器：本项存的是 MediaStore 的 RELATIVE_PATH
-     * （相对公共存储根目录），不是绝对文件路径，SAF 的 ACTION_OPEN_DOCUMENT_TREE
-     * 返回的是 content:// 树 URI，两者不可互换，接进来会导致保存失败。
-     * 而 RELATIVE_PATH 的**顶级目录受系统限制**（Android 10+）：
+     * 为什么不能直接用系统 SAF 文件选择器：本项存的是 MediaStore 的 RELATIVE_PATH
+     * （相对公共存储根目录），不是绝对文件路径，ACTION_OPEN_DOCUMENT_TREE 返回的
+     * content:// 树 URI 与之不可互换，接进来会导致保存失败。
+     * 而 RELATIVE_PATH 的顶级目录受系统限制（Android 10+）：
      *   图片 → Pictures / DCIM；其它文件 → Download / Documents。
-     * 所以选择器只列合法项，避免用户填了一个好看但保存不了的路径；
-     * 需要自定义子目录时再走「手动输入…」，那里做同样的顶级目录校验。
+     * 所以浏览窗口从合法顶级目录起步、在其内逐级下钻；子目录列表 = File API 与
+     * MediaStore RELATIVE_PATH 枚举的并集（设置页不强依赖媒体权限：无权限或目录为空时
+     * 仍可通过「手动输入…」填写，手动输入分支做同样的顶级目录校验）。
      */
     private fun editSaveDir(isImage: Boolean) {
-        val cur = if (isImage) repo.saveDirImage else repo.saveDirFile
-        val presets = saveDirPresets(isImage)
-        val labels = presets.map { p -> if (p == cur) "$p    ✓ 当前" else p }.toMutableList()
-        labels.add("手动输入…")
-        AlertDialog.Builder(this)
+        browseSaveDir(isImage, "")
+    }
+
+    private fun browseSaveDir(isImage: Boolean, rel: String) {
+        val tops = if (isImage) listOf("Pictures", "DCIM") else listOf("Download", "Documents")
+        val entries: List<String> = if (rel.isEmpty()) tops else listSubDirs(isImage, rel)
+
+        val pathLabel = TextView(this).apply {
+            text = if (rel.isEmpty()) "请选择顶级目录（系统限制）" else "/$rel"
+            setPadding(52, 36, 52, 12)
+            textSize = 14f
+            setTextColor(getColor(R.color.n_text_secondary))
+        }
+        val rows = mutableListOf<String>()
+        if (rel.isNotEmpty()) rows.add("↩ 返回上一级")
+        if (rel.isNotEmpty() && entries.isEmpty()) rows.add("（没有子文件夹）")
+        rows.addAll(entries)
+        val list = android.widget.ListView(this).apply {
+            adapter = android.widget.ArrayAdapter(this@SettingsActivity,
+                android.R.layout.simple_list_item_1, rows)
+        }
+        val container = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            addView(pathLabel)
+            addView(list)
+        }
+
+        val dialog = AlertDialog.Builder(this)
             .setTitle(if (isImage) R.string.settings_save_dir_image else R.string.settings_save_dir_file)
-            .setItems(labels.toTypedArray()) { _, which ->
-                if (which >= presets.size) editSaveDirManual(isImage)
-                else {
-                    val v = presets[which]
-                    if (isImage) repo.saveDirImage = v else repo.saveDirFile = v
-                    Toast.makeText(this, "已保存：$v", Toast.LENGTH_SHORT).show()
-                    buildRows()
+            .setView(container)
+            .setPositiveButton("选择此目录") { _, _ ->
+                if (isImage) repo.saveDirImage = rel else repo.saveDirFile = rel
+                Toast.makeText(this, "已保存：$rel", Toast.LENGTH_SHORT).show()
+                buildRows()
+            }
+            .setNegativeButton("手动输入…") { _, _ -> editSaveDirManual(isImage) }
+            .setNeutralButton(android.R.string.cancel, null)
+            .create()
+        // 根层级不能直接「选择此目录」（尚未落在任何合法顶级目录内）
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = rel.isNotEmpty()
+        }
+        dialog.show()
+        list.setOnItemClickListener { _, _, pos, _ ->
+            dialog.dismiss()
+            when {
+                rel.isNotEmpty() && pos == 0 -> browseSaveDir(isImage, rel.substringBeforeLast('/', ""))
+                rel.isNotEmpty() && rows[pos].startsWith("（") -> Unit // 空目录占位行
+                else -> browseSaveDir(isImage, "$rel/${rows[pos]}")
+            }
+        }
+    }
+
+    /** 枚举 rel 下的子目录：File API ∪ MediaStore RELATIVE_PATH（任一失败不影响另一方） */
+    private fun listSubDirs(isImage: Boolean, rel: String): List<String> {
+        val dirs = sortedSetOf<String>()
+        runCatching {
+            val base = java.io.File(Environment.getExternalStorageDirectory(), rel)
+            base.listFiles { f -> f.isDirectory }?.forEach { dirs.add(it.name) }
+        }
+        if (android.os.Build.VERSION.SDK_INT >= 29) {
+            runCatching {
+                val uri = if (isImage) android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+                          else android.provider.MediaStore.Files.getContentUri("external")
+                val prefix = "$rel/"
+                contentResolver.query(uri,
+                    arrayOf(android.provider.MediaStore.MediaColumns.RELATIVE_PATH),
+                    null, null, null)?.use { c ->
+                    val i = c.getColumnIndexOrThrow(android.provider.MediaStore.MediaColumns.RELATIVE_PATH)
+                    while (c.moveToNext()) {
+                        val p = c.getString(i) ?: continue
+                        if (!p.startsWith(prefix)) continue
+                        val next = p.removePrefix(prefix).substringBefore('/').trim()
+                        if (next.isNotBlank()) dirs.add(next)
+                    }
                 }
             }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
+        }
+        return dirs.toList()
     }
 
     private fun saveDirPresets(isImage: Boolean) = if (isImage)

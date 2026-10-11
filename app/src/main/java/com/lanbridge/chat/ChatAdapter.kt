@@ -79,8 +79,11 @@ class ChatAdapter(
 
         when (msg.type) {
             MsgType.SYSTEM_URL -> {
+                // v1.1.9：地址卡片必须每次显式归位左对齐——VH 复用会残留上一条消息的
+                // row.gravity=END（发出消息靠右），导致发照片/清空后卡片忽左忽右、样式漂移。
+                h.row.gravity = android.view.Gravity.START
+                h.bubble.gravity = android.view.Gravity.START // 卡片内文字左对齐
                 h.bubble.setBackgroundResource(R.drawable.bg_system_card)
-                h.bubble.gravity = android.view.Gravity.CENTER
                 h.tvText.visibility = View.VISIBLE
                 h.tvText.text = when (msg.connState) {
                     "connected" -> ctx.getString(R.string.connected_to, SessionState.peerIp) + "\n" + SessionState.selfUrl
