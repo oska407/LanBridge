@@ -128,7 +128,7 @@ class SettingsActivity : AppCompatActivity() {
         val ver = runCatching { packageManager.getPackageInfo(packageName, 0).versionName }
             .getOrDefault("未知")
         rows.add(Row.Item(getString(R.string.settings_group_about), getString(R.string.settings_version),
-            "$ver · PC 网页标题栏显示的号码应与此一致"))
+            "$ver · by 407"))
         rows.add(Row.Item(getString(R.string.settings_group_about), "查看诊断日志",
             "WS 收发记录：没有「收到PC文本」= 网页没发出来", Row.Kind.ACTION, onClick = { showDiag() }))
         rows.add(Row.Item(getString(R.string.settings_group_about), getString(R.string.settings_privacy),

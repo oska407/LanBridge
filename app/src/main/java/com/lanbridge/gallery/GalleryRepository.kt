@@ -11,6 +11,10 @@ import android.provider.MediaStore
  * MediaStore 查询（T14）：按 BUCKET 分组 + 内存分页切片。
  * 全部图文视频走 MediaStore.Files 单查询（media_type IN (1,3)），图文混排顺序稳定。
  *
+ * v1.1.9g（需求：图库顺序与 v1.1.9f 显示的完全相反）：
+ *  - 排序方向整体反转：由「从新到旧」改为「从旧到新」（sortKey 升序，同刻 id 降序，
+ *    与 v1.1.9f 的排列互为镜像）。查询/分页/缓存逻辑不变，仅 sortDesc → sortAsc。
+ *
  * v1.1.9f（需求：图库从新到旧）：
  *  - 排序键改为「拍摄时间优先」：DATE_TAKEN（毫秒）> 0 用拍摄时间，否则回退
  *    DATE_ADDED（秒）×1000。此前按 DATE_ADDED（入库时间）排序，wx_camera/mmexport
@@ -123,7 +127,7 @@ class GalleryRepository(private val ctx: Context) {
             if (!allLoaded) {
                 allCache.clear()
                 volumes.forEach { vol -> collectQuery(filesUri(vol), vol, null, null, allCache) }
-                sortDesc(allCache)
+                sortAsc(allCache)
                 allLoaded = true
             }
             allCache.drop(offset).take(limit)
@@ -136,16 +140,16 @@ class GalleryRepository(private val ctx: Context) {
                     "media_type IN (?,?) AND bucket_id",
                     arrayOf("${MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE}",
                         "${MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO}", "${bucket.id}"), out)
-                sortDesc(out)
+                sortAsc(out)
                 out
             }
             list.drop(offset).take(limit)
         }
     }
 
-    /** 从新到旧：拍摄时间优先（毫秒），无拍摄时间回退入库时间；同刻按 id 稳定排序 */
-    private fun sortDesc(list: MutableList<MediaItem>) {
-        list.sortWith(compareByDescending<MediaItem> { it.sortKey }.thenBy { it.id })
+    /** v1.1.9g：从旧到新（与 v1.1.9f 的从新到旧互为镜像）：sortKey 升序，同刻按 id 降序 */
+    private fun sortAsc(list: MutableList<MediaItem>) {
+        list.sortWith(compareBy<MediaItem> { it.sortKey }.thenByDescending { it.id })
     }
 
     /** 整卷（可选 bucket 过滤）全量收集。

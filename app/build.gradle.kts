@@ -11,8 +11,8 @@ android {
         applicationId = "com.lanbridge"
         minSdk = 28
         targetSdk = 34
-        versionCode = 16
-        versionName = "1.1.9f"
+        versionCode = 17
+        versionName = "1.1.9g"
     }
 
     buildTypes {
