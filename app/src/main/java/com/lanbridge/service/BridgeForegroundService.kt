@@ -35,6 +35,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.io.File
 
 /**
@@ -46,6 +48,7 @@ class BridgeForegroundService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO +
         CoroutineExceptionHandler { _, e -> CrashLogger.logThrowable(e, "service-scope") })
     private var server: EmbeddedServer? = null
+    private val launchLock = Mutex() // 串行化 launchServer，防止重复 startForegroundService 并发起多实例
     private var wakeLock: PowerManager.WakeLock? = null
     private var wifiLock: WifiManager.WifiLock? = null
     private var currentIp: String = ""
@@ -137,14 +140,20 @@ class BridgeForegroundService : Service() {
     }
 
     private suspend fun launchServer(ip: String) {
-        if (server != null) return // 幂等：重复 startForegroundService/restart 不再起第二个实例
-        val port = SettingsRepository.get(this).serverPort
+        // 复制资源（可能失败）：先在外层判定，失败直接返回，不进锁、不起服务
         val webDir = runCatching { copyWebAssets() }
             .onFailure { CrashLogger.logThrowable(it, "copy-web-assets") }
-            .getOrNull() ?: run {
+            .getOrNull()
+        if (webDir == null) {
             SessionState.setConnStatus("error")
             return
         }
+        launchLock.withLock {
+            // 重启安全：已有实例先停掉再起，修复「设置里改端口→重启服务」时旧 server 仍在、
+            // 新端口根本没被 bind（旧红框残留、服务 DOWN）的 bug；Mutex 串行化防止并发重复起实例。
+            server?.stop()
+            server = null
+            val port = SettingsRepository.get(this).serverPort
             val s = EmbeddedServer(TransferEngine.hub, TransferEngine.fileStore, webDir,
                 onPortConflict = { p ->
                     // 可能从 IO 线程回调：SessionState 操作为线程安全，可直接调用；Toast 切主线程
@@ -198,6 +207,7 @@ class BridgeForegroundService : Service() {
                         }
                     }
                 }
+        }
     }
 
     /** 绑定 0.0.0.0 时 selfUrl 会是 http://0.0.0.0:port（无法直接访问），补一句可读提示。 */
