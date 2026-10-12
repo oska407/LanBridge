@@ -159,34 +159,47 @@ class BridgeForegroundService : Service() {
             runCatching { s.start(ip, port) }
                 .onSuccess {
                     server = s
-                    SessionState.selfUrl = s.selfUrl()
+                    currentIp = s.host // 与实际绑定地址对齐（回退 0.0.0.0 时尤其重要）
+                    SessionState.selfUrl = selfUrlOf(s)
                     SessionState.setConnStatus("waiting")
                     acquireWake()
                     updateNotification()
                 }
                 .onFailure { e ->
                     CrashLogger.logThrowable(e, "server-start ip=$ip port=$port")
-                    // 指定 IP 不是本机地址（热点没开 / 连的 WiFi 不是热点）时回退 0.0.0.0，
+                    // 指定 IP 不是本机地址（热点没开 / 连的 WiFi 不是热点 / 关 Wi-Fi）时回退 0.0.0.0，
                     // 至少服务能起来，用户可手动看手机 IP 访问；否则直接闪退。
-                    if (e is java.net.BindException) {
+                    // 只有当「原地址不是 0.0.0.0」才回退：若本就绑 0.0.0.0 仍失败，必是端口被占，
+                    // 此时 start() 内部已触发 onPortConflict（端口占用提示），无需再无意义重试。
+                    if (e is java.net.BindException && ip != HotspotIp.BIND_ALL) {
                         runCatching {
                             CrashLogger.log("server-start", "回退绑定 0.0.0.0:$port（原地址 $ip 不可绑）")
                             s.start("0.0.0.0", port)
                         }.onSuccess {
                             server = s
-                            SessionState.selfUrl = "http://$ip:$port（如打不开请检查手机热点/WiFi 是否在同一局域网）"
+                            currentIp = s.host
+                            SessionState.selfUrl = selfUrlOf(s)
                             SessionState.setConnStatus("waiting")
                             acquireWake()
                             updateNotification()
                             Handler(Looper.getMainLooper()).post {
                                 Toast.makeText(this@BridgeForegroundService,
-                                    "服务已启动，但绑定地址受限：$ip，已自动回退到所有网卡",
+                                    "服务已启动，但绑定地址受限（已自动回退到所有网卡）",
                                     Toast.LENGTH_LONG).show()
                             }
-                        }.onFailure { CrashLogger.logThrowable(it, "server-start-fallback 0.0.0.0") }
+                        }.onFailure { fallbackErr ->
+                            // 0.0.0.0 也失败 = 端口被占，start() 内部已触发 onPortConflict，这里仅记录
+                            CrashLogger.logThrowable(fallbackErr, "server-start-fallback 0.0.0.0")
+                        }
                     }
                 }
     }
+
+    /** 绑定 0.0.0.0 时 selfUrl 会是 http://0.0.0.0:port（无法直接访问），补一句可读提示。 */
+    private fun selfUrlOf(s: EmbeddedServer): String =
+        if (s.host == HotspotIp.BIND_ALL) {
+            "http://${HotspotIp.displayIp()}:${s.port}（未绑定具体网卡，请确认手机与电脑在同一局域网）"
+        } else s.selfUrl()
 
     /** assets/pc-web → cacheDir/pc-web（Ktor staticFiles 需磁盘目录，整树递归拷贝）。
      *  每次启动强制重新拷贝：版本升级若未卸载，旧 cacheDir/pc-web 会残留，

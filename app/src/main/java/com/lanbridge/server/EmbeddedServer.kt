@@ -2,6 +2,7 @@ package com.lanbridge.server
 
 import com.lanbridge.model.WsMsg
 import com.lanbridge.util.CrashLogger
+import com.lanbridge.util.HotspotIp
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCallPipeline
@@ -28,6 +29,9 @@ import io.ktor.websocket.CloseReason
 import io.ktor.websocket.Frame
 import io.ktor.websocket.close
 import io.ktor.websocket.readText
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.io.File
@@ -36,7 +40,8 @@ import java.net.URLEncoder
 
 /**
  * Ktor 内嵌服务（T04/T05/T06/T07）：HTTP + WS 同端口。
- * 仅绑定热点网卡 IP（不绑 0.0.0.0，F-11 唯一缓解）；端口占用不自动换（F-20 AC9）。
+ * 默认绑定热点网卡 IP（不绑 0.0.0.0，F-11 唯一缓解）；但 v1.1.9i 起，当没有可用局域网地址时
+ * 会回退绑定 0.0.0.0（永远可绑），避免 EADDRNOTAVAIL 闪退。端口占用不自动换（F-20 AC9）。
  */
 class EmbeddedServer(
     private val hub: WsHub,
@@ -48,22 +53,57 @@ class EmbeddedServer(
     @Volatile var port: Int = 8080
     @Volatile var host: String = ""
 
+    /**
+     * 启动内嵌服务。
+     *
+     * v1.1.9i：修复 `java.net.BindException: Cannot assign requested address` 直接闪退。
+     * 根因是两个缺陷叠加：
+     * 1) **触发**：HotspotIp 在「手机没开热点也没连 Wi-Fi」时会返回写死的 192.168.43.1，
+     *    该地址不在本机任何网卡上 → bind() 抛 EADDRNOTAVAIL（已在 HotspotIp 改为回退 0.0.0.0）。
+     * 2) **为何兜底没生效反而崩溃**：Ktor 的 bind() 跑在它自己 launch 的 acceptJob 协程里
+     *    （CIOApplicationEngine.initServerJob 是 LAZY 协程，其父上下文默认 EmptyCoroutineContext）。
+     *    bind 失败时异常同时走两条路：一条经 socket.completeExceptionally → startupJob 让
+     *    start() 同步抛出（调用方能 catch）；另一条沿协程父链
+     *    （acceptJob → serverJob → initServerJob → 根 Job）向上冒泡——该链上既没有 SupervisorJob
+     *    也没有 CoroutineExceptionHandler，于是直达线程默认未捕获异常处理器 → 进程崩溃。
+     *    两条路是竞速，哪条先到取决于调度；实测崩溃路径先到时调用方的 try/catch 根本没机会跑。
+     *
+     * 修复：给 embeddedServer 传带 **SupervisorJob + CoroutineExceptionHandler** 的
+     * parentCoroutineContext——子协程失败不再连坐父 Job，异常只被记录；同时 startupJob 那条路
+     * 不受影响，bind 失败仍会**同步**抛出 BindException，调用方
+     * （BridgeForegroundService）的「回退 0.0.0.0」逻辑即可正常生效。
+     */
     suspend fun start(ip: String, port: Int) {
         stop()
         this.host = ip; this.port = port
+        // 每次启动一套独立父协程上下文：SupervisorJob 隔离子协程失败，Handler 兜底记录
+        val parentCtx = SupervisorJob() + CoroutineExceptionHandler { _, e ->
+            CrashLogger.logThrowable(e, "ktor-engine")
+        }
         try {
-            engine = embeddedServer(CIO, port = port, host = ip) {
-                install(WebSockets)
-                // 静态资源/页面一律禁缓存：浏览器不拿旧 HTML/JS/CSS，
-                // 前端修复（如断连条配色）刷新页面即生效，无需清浏览器缓存
-                intercept(ApplicationCallPipeline.Plugins) {
-                    call.response.header("Cache-Control", "no-store, must-revalidate")
+            engine = CoroutineScope(parentCtx).embeddedServer(
+                factory = CIO,
+                port = port,
+                host = ip,
+                configure = { reuseAddress = true }, // 切网重启后端口可立即再绑（规避 TIME_WAIT）
+                module = {
+                    install(WebSockets)
+                    // 静态资源/页面一律禁缓存：浏览器不拿旧 HTML/JS/CSS，
+                    // 前端修复（如断连条配色）刷新页面即生效，无需清浏览器缓存
+                    intercept(ApplicationCallPipeline.Plugins) {
+                        call.response.header("Cache-Control", "no-store, must-revalidate")
+                    }
+                    routing { routes() }
                 }
-                routing { routes() }
-            }.also { it.start(wait = false) }
+            ).also { it.start(wait = false) }
         } catch (e: BindException) {
-            // 不自动换端口，提示去设置改（F-20 AC9）
-            onPortConflict?.invoke(port)
+            // 端口冲突判定规则（v1.1.9i）：0.0.0.0 会绑所有网卡、永远可绑地址部分，
+            // 若「绑 0.0.0.0 也失败」则唯一原因是端口被占 → 才算真正的端口冲突，提示去设置换端口。
+            // 指定网卡 IP 不可绑（如关 Wi-Fi 后 192.168.43.1 不在本机，EADDRNOTAVAIL）属地址问题，
+            // 此处不报端口冲突，交由 BridgeForegroundService 回退 0.0.0.0。
+            if (ip == HotspotIp.BIND_ALL) {
+                onPortConflict?.invoke(port)
+            }
             throw e
         }
     }
@@ -81,7 +121,7 @@ class EmbeddedServer(
         get("/api/info") {
             val json = JSONObject()
                 .put("ip", host).put("deviceName", SessionState.deviceName)
-                .put("selfUrl", selfUrl()).put("version", "1.1.9h")
+                .put("selfUrl", selfUrl()).put("version", "1.1.9i")
             call.respondText(json.toString(), ContentType.Application.Json)
         }
 

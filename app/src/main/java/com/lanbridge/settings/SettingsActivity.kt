@@ -73,11 +73,13 @@ class SettingsActivity : AppCompatActivity() {
 
     private fun buildRows() {
         rows.clear()
-        val ip = HotspotIp.get(this)
+        val ip = HotspotIp.displayIp()
         val url = "http://$ip:${repo.serverPort}"
+        // 没有可用局域网地址时不要把 0.0.0.0 当地址展示，给出可操作提示
+        val ipNote = if (ip == HotspotIp.BIND_ALL) "未检测到局域网地址，请先开启手机热点或连接 Wi-Fi" else url
 
         rows.add(Row.Group(getString(R.string.settings_group_connection)))
-        rows.add(Row.Item(getString(R.string.settings_group_connection), getString(R.string.settings_title), url,
+        rows.add(Row.Item(getString(R.string.settings_group_connection), getString(R.string.settings_title), ipNote,
             onClick = { showQr(url) }))
         rows.add(Row.Item(getString(R.string.settings_group_connection), getString(R.string.settings_port),
             "${repo.serverPort} · 重启服务生效", Row.Kind.CHOICE, listOf("8080", "8000", "8888"), onClick = { changePort() }))
@@ -152,7 +154,7 @@ class SettingsActivity : AppCompatActivity() {
                     v > 65535 -> Toast.makeText(this, R.string.settings_port_bad, Toast.LENGTH_SHORT).show()
                     else -> {
                         // 五步链路：确认预览新地址 → 重启 → 刷新卡片 → 失败回退（T09D）
-                        val ip = HotspotIp.get(this)
+                        val ip = HotspotIp.displayIp()
                         AlertDialog.Builder(this)
                             .setTitle("重启服务")
                             .setMessage("新地址 http://$ip:$v\n将重启服务以生效")
