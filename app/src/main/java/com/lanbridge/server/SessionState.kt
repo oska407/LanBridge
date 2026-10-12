@@ -22,6 +22,7 @@ object SessionState {
     var selfUrl: String = ""
     var peerIp: String = ""
     var connStatus: String = "waiting"   // waiting | connected | disconnected
+    var conflictPort: Int = 0            // 最近一次端口冲突的端口（红框提示用真实端口，而非写死 8080）
     var notifyEnabled: Boolean = true    // 一个开关管两端（F-19 AC2）
 
     val messages = Collections.synchronizedList(mutableListOf<Message>())
@@ -42,13 +43,26 @@ object SessionState {
         }
     }
 
-    /** 过滤收口（v1.6 必须约束）：多选/全选/保存统计/计数一律走它 */
+    /** 过滤收口（v1.6 必须约束）：多选/全选/保存统计/计数一律走它；系统红框提示不算用户消息 */
     fun userMessages(): List<Message> = synchronized(messages) {
-        messages.filter { it.type != MsgType.SYSTEM_URL }
+        messages.filter { it.type != MsgType.SYSTEM_URL && it.type != MsgType.SYSTEM_NOTICE }
     }
 
     fun addMessage(m: Message) {
         messages.add(m)
+        notifyChanged()
+    }
+
+    /**
+     * 在聊天记录末尾插入一条系统红框提示（v1.1.9i+）：端口被占用等异常引导。
+     * 自带去重：先移除已有的 SYSTEM_NOTICE，保证同一类提示只有一条、始终是最新的。
+     * 不计入 userMessages（不可勾选、不进转发/保存统计）。
+     */
+    fun pushSystemNotice(text: String) {
+        synchronized(messages) {
+            messages.removeAll { it.type == MsgType.SYSTEM_NOTICE }
+            messages.add(Message(UUID.randomUUID().toString(), MsgType.SYSTEM_NOTICE, "system", text = text))
+        }
         notifyChanged()
     }
 
@@ -65,12 +79,20 @@ object SessionState {
         notifyChanged()
     }
 
-    /** 清空用户消息但保留首条地址消息（F-19 AC3）；不清临时文件 */
+    /** 清空用户消息但保留首条地址消息（F-19 AC3）；系统红框提示一并清掉；不清临时文件 */
     fun clearMessages() {
         synchronized(messages) {
             val keep = messages.filter { it.type == MsgType.SYSTEM_URL }
             messages.clear()
             messages.addAll(keep)
+        }
+        notifyChanged()
+    }
+
+    /** 移除所有系统红框提示（端口冲突解除/用户改端口后调用，避免红框残留） */
+    fun clearSystemNotices() {
+        synchronized(messages) {
+            messages.removeAll { it.type == MsgType.SYSTEM_NOTICE }
         }
         notifyChanged()
     }

@@ -1,7 +1,8 @@
 package com.lanbridge.model
 
-/** 消息类型；SYSTEM_URL = 连接地址系统消息（聊天记录第一条，不置顶不悬浮，v1.6） */
-enum class MsgType { TEXT, IMAGE, FILE, VIDEO, SYSTEM_URL }
+/** 消息类型；SYSTEM_URL = 连接地址系统消息（聊天记录第一条，不置顶不悬浮，v1.6）；
+ *  SYSTEM_NOTICE = 系统红框提示（如端口被占用），插入聊天记录末尾、不可勾选、不留作为用户消息 */
+enum class MsgType { TEXT, IMAGE, FILE, VIDEO, SYSTEM_URL, SYSTEM_NOTICE }
 
 /** 发送状态（F-19 AC1）；RECEIVING = 正在接收 PC 传来的文件（v1.1.5+ 接收进度） */
 enum class MsgStatus { SENDING, SENT, FAILED, RECEIVING }

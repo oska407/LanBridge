@@ -147,8 +147,11 @@ class BridgeForegroundService : Service() {
         }
             val s = EmbeddedServer(TransferEngine.hub, TransferEngine.fileStore, webDir,
                 onPortConflict = { p ->
-                    // 可能从 IO 线程回调：Toast 切主线程，否则二次崩溃
+                    // 可能从 IO 线程回调：SessionState 操作为线程安全，可直接调用；Toast 切主线程
+                    SessionState.conflictPort = p
                     SessionState.setConnStatus("error")
+                    // 在聊天记录里用红框提示（端口被占用），引导用户去设置中修改端口
+                    SessionState.pushSystemNotice("⚠ " + getString(R.string.port_occupied, p))
                     Handler(Looper.getMainLooper()).post {
                         android.widget.Toast.makeText(
                             this@BridgeForegroundService,
@@ -162,6 +165,7 @@ class BridgeForegroundService : Service() {
                     currentIp = s.host // 与实际绑定地址对齐（回退 0.0.0.0 时尤其重要）
                     SessionState.selfUrl = selfUrlOf(s)
                     SessionState.setConnStatus("waiting")
+                    SessionState.clearSystemNotices() // 端口冲突红框：服务正常起来后清除
                     acquireWake()
                     updateNotification()
                 }
@@ -175,11 +179,12 @@ class BridgeForegroundService : Service() {
                         runCatching {
                             CrashLogger.log("server-start", "回退绑定 0.0.0.0:$port（原地址 $ip 不可绑）")
                             s.start("0.0.0.0", port)
-                        }.onSuccess {
+                        }                        .onSuccess {
                             server = s
                             currentIp = s.host
                             SessionState.selfUrl = selfUrlOf(s)
                             SessionState.setConnStatus("waiting")
+                            SessionState.clearSystemNotices() // 端口冲突红框：服务正常起来后清除
                             acquireWake()
                             updateNotification()
                             Handler(Looper.getMainLooper()).post {

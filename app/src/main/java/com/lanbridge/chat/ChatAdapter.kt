@@ -1,10 +1,12 @@
 package com.lanbridge.chat
 
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.lanbridge.R
@@ -80,6 +82,15 @@ class ChatAdapter(
         // 气泡标准内边距（v1.1.9b 提前到 when 外：地址卡片分支也要用）
         val pad = (10 * ctx.resources.displayMetrics.density).toInt()
 
+        // 复位气泡宽度与文字样式：VH 复用可能残留「系统红框提示」设成的 MATCH_PARENT / 红字 / 居中，
+        // 普通/地址消息必须归位成「自适应宽 + 起始对齐 + 默认文字色」，否则会串样式。
+        (h.bubble.layoutParams as LinearLayout.LayoutParams).apply {
+            width = LinearLayout.LayoutParams.WRAP_CONTENT
+            h.bubble.layoutParams = this
+        }
+        h.tvText.textAlignment = View.TEXT_ALIGNMENT_VIEW_START
+        h.tvText.setTextColor(ContextCompat.getColor(ctx, R.color.n_text_primary))
+
         when (msg.type) {
             MsgType.SYSTEM_URL -> {
                 // v1.1.9b：地址卡片每次必须显式归位「背景+内边距+对齐」——
@@ -88,12 +99,15 @@ class ChatAdapter(
                 //（表现为发照片/滚动后卡片样式与刚启动时不一致）。
                 h.row.gravity = android.view.Gravity.START
                 h.bubble.gravity = android.view.Gravity.START // 卡片内文字左对齐
-                h.bubble.setBackgroundResource(R.drawable.bg_system_card)
+                // v1.1.9i+：端口被占用（error）时用红框背景，其它态用中性蓝框
+                h.bubble.setBackgroundResource(
+                    if (msg.connState == "error") R.drawable.bg_system_card_error
+                    else R.drawable.bg_system_card)
                 h.bubble.setPadding(pad, pad, pad, pad)
                 h.tvText.visibility = View.VISIBLE
                 h.tvText.text = when (msg.connState) {
                     "connected" -> ctx.getString(R.string.connected_to, SessionState.peerIp) + "\n" + SessionState.selfUrl
-                    "error" -> ctx.getString(R.string.port_occupied, 8080)
+                    "error" -> ctx.getString(R.string.port_occupied, SessionState.conflictPort)
                     else -> ctx.getString(R.string.waiting_connection) + "\n" + SessionState.selfUrl
                 }
                 h.btnCopy.visibility = View.VISIBLE
@@ -103,6 +117,28 @@ class ChatAdapter(
                 h.progress.visibility = View.GONE; h.tvStatus.visibility = View.GONE
                 h.btnResend.visibility = View.GONE
                 h.cbSelect.visibility = View.GONE // 地址消息不可勾选（F-17 AC4）
+            }
+            MsgType.SYSTEM_NOTICE -> {
+                // v1.1.9i+：系统红框提示（端口被占用等）——整宽居中、红框红字、不可勾选。
+                // 因 ChatActivity 每次变更都自动滚到末尾，这条会可靠地出现在聊天记录底部、立即可见。
+                h.row.gravity = Gravity.CENTER_HORIZONTAL
+                (h.bubble.layoutParams as LinearLayout.LayoutParams).apply {
+                    width = LinearLayout.LayoutParams.MATCH_PARENT
+                    h.bubble.layoutParams = this
+                }
+                h.bubble.gravity = Gravity.CENTER_HORIZONTAL
+                h.bubble.setBackgroundResource(R.drawable.bg_system_card_error)
+                h.bubble.setPadding(pad, pad, pad, pad)
+                h.tvText.visibility = View.VISIBLE
+                h.tvText.textAlignment = View.TEXT_ALIGNMENT_CENTER
+                h.tvText.setTextColor(ContextCompat.getColor(ctx, R.color.danger_text))
+                h.tvText.text = msg.text
+                h.btnCopy.visibility = View.GONE
+                h.ivImage.visibility = View.GONE; h.fileRow.visibility = View.GONE
+                h.imageWrap.visibility = View.GONE; h.tvPlay.visibility = View.GONE
+                h.progress.visibility = View.GONE; h.tvStatus.visibility = View.GONE
+                h.btnResend.visibility = View.GONE
+                h.cbSelect.visibility = View.GONE // 系统提示不可勾选
             }
             else -> {
                 h.btnCopy.visibility = View.GONE

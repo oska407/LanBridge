@@ -68,6 +68,6 @@ class SelectionController {
 
     fun isSelected(id: String) = selectedIds.contains(id)
 
-    /** 地址（SYSTEM_URL）卡片不可勾选（F-17 AC4） */
-    fun canSelect(msg: Message) = msg.type != MsgType.SYSTEM_URL
+    /** 地址（SYSTEM_URL）卡片与系统红框提示（SYSTEM_NOTICE）均不可勾选 */
+    fun canSelect(msg: Message) = msg.type != MsgType.SYSTEM_URL && msg.type != MsgType.SYSTEM_NOTICE
 }
