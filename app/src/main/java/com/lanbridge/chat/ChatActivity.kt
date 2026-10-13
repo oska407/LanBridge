@@ -458,6 +458,17 @@ class ChatActivity : AppCompatActivity(), ChatAdapter.Callbacks, MessageMenu.Cal
         Toast.makeText(this, R.string.address_copied, Toast.LENGTH_SHORT).show() // Toast 纯告知（T10E）
     }
 
+    override fun onRefreshIp() {
+        // 点击聊天地址卡片 → 通知服务重读网卡 IP 并重绑（v1.1.9j）。
+        // 服务未运行时会随之冷启（onStartCommand 里先前台化再刷新，避免前台服务超时崩溃）
+        val i = Intent(this, BridgeForegroundService::class.java)
+            .setAction(BridgeForegroundService.ACTION_REFRESH_IP)
+        val started = runCatching {
+            if (Build.VERSION.SDK_INT >= 26) startForegroundService(i) else startService(i)
+        }.isSuccess
+        if (!started) Toast.makeText(this, R.string.refresh_failed, Toast.LENGTH_SHORT).show()
+    }
+
     override fun onShare(msg: Message) {
         val ref = msg.fileRef
         when {

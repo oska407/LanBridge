@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  v1.1.9j：端口被占（error 态）的地址卡片同样可点击（= 重试绑定），
+  ripple 包住原 bg_system_card_error 的造型。水波纹用中性深色，避免红卡上出现蓝色违和感。
+-->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="#22000000">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#FDECEA" />
+            <corners android:radius="12dp" />
+            <stroke android:width="2dp" android:color="@color/danger_text" />
+        </shape>
+    </item>
+</ripple>

@@ -38,6 +38,7 @@ class ChatAdapter(
         fun onLongPress(v: View, msg: Message)
         fun onResend(msg: Message)
         fun onCopyUrl()
+        fun onRefreshIp() // 点击地址卡片：手动刷新 IP（v1.1.9j）
         fun onPreviewImage(msg: Message) // 点图片看大图（v1.1.5）
     }
 
@@ -90,6 +91,8 @@ class ChatAdapter(
         }
         h.tvText.textAlignment = View.TEXT_ALIGNMENT_VIEW_START
         h.tvText.setTextColor(ContextCompat.getColor(ctx, R.color.n_text_primary))
+        // 复位气泡点击监听：防 VH 复用把「地址卡片点击刷新 IP」带给普通消息/红框提示
+        h.bubble.setOnClickListener(null)
 
         when (msg.type) {
             MsgType.SYSTEM_URL -> {
@@ -99,17 +102,22 @@ class ChatAdapter(
                 //（表现为发照片/滚动后卡片样式与刚启动时不一致）。
                 h.row.gravity = android.view.Gravity.START
                 h.bubble.gravity = android.view.Gravity.START // 卡片内文字左对齐
-                // v1.1.9i+：端口被占用（error）时用红框背景，其它态用中性蓝框
+                // v1.1.9j：地址卡片可点击（手动刷新 IP）→ 改用带水波纹的背景；
+                // error 态仍为红框（此时点击 = 重试绑定）
                 h.bubble.setBackgroundResource(
-                    if (msg.connState == "error") R.drawable.bg_system_card_error
-                    else R.drawable.bg_system_card)
+                    if (msg.connState == "error") R.drawable.bg_system_card_error_ripple
+                    else R.drawable.bg_system_card_ripple)
                 h.bubble.setPadding(pad, pad, pad, pad)
                 h.tvText.visibility = View.VISIBLE
+                val refreshHint = ctx.getString(R.string.tap_to_refresh_ip)
                 h.tvText.text = when (msg.connState) {
-                    "connected" -> ctx.getString(R.string.connected_to, SessionState.peerIp) + "\n" + SessionState.selfUrl
+                    "connected" -> ctx.getString(R.string.connected_to, SessionState.peerIp) + "\n" + SessionState.selfUrl + "\n" + refreshHint
                     "error" -> ctx.getString(R.string.port_occupied, SessionState.conflictPort)
-                    else -> ctx.getString(R.string.waiting_connection) + "\n" + SessionState.selfUrl
+                    else -> ctx.getString(R.string.waiting_connection) + "\n" + SessionState.selfUrl + "\n" + refreshHint
                 }
+                // 点击卡片 = 手动刷新 IP（v1.1.9j）：无网时启动只能绑 0.0.0.0，连上网后
+                // 系统网络回调在部分 ROM 上不可靠；用户要求不做轮询，改为点卡片时重读网卡并重绑
+                h.bubble.setOnClickListener { if (!selection.selectionMode) callbacks.onRefreshIp() }
                 h.btnCopy.visibility = View.VISIBLE
                 h.btnCopy.setOnClickListener { callbacks.onCopyUrl() }
                 h.ivImage.visibility = View.GONE; h.fileRow.visibility = View.GONE
@@ -240,6 +248,15 @@ class ChatAdapter(
         h.cbSelect.contentDescription = h.itemView.context.getString(
             if (selected) R.string.cd_deselect else R.string.cd_select)
         h.cbSelect.setOnClickListener { if (selection.selectionMode) selection.toggle(msg) }
+        // 系统消息（地址卡片 / 红框提示）：不参与多选、不长按弹菜单（v1.1.9j）——
+        // 菜单项对系统消息无意义，「删除」还会误删首条地址消息
+        if (msg.type == MsgType.SYSTEM_URL || msg.type == MsgType.SYSTEM_NOTICE) {
+            h.row.isClickable = false
+            h.row.isLongClickable = false
+            h.ivImage.isClickable = false
+            h.ivImage.isLongClickable = false
+            return
+        }
         if (selectable) {
             // 多选模式：点整行切换选中（含图片区域）；图片不抢触摸，长按在此模式无意义
             h.row.isClickable = true

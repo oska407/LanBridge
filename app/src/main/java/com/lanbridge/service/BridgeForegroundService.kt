@@ -91,6 +91,12 @@ class BridgeForegroundService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
+        // 手动刷新 IP（点击聊天地址卡片触发，v1.1.9j）：先前台化再刷新，
+        // 避免服务冷启时 startForegroundService 未及时 startForeground 被系统判超时（Android 12+）
+        if (intent?.action == ACTION_REFRESH_IP) {
+            refreshIp()
+            return START_STICKY
+        }
         startServer()
         return START_STICKY
     }
@@ -131,11 +137,7 @@ class BridgeForegroundService : Service() {
             server?.stop()
             server = null
             launchServer(newIp)
-            Handler(Looper.getMainLooper()).post {
-                Toast.makeText(this@BridgeForegroundService,
-                    "网络已切换，新地址 http://$newIp:${SettingsRepository.get(this@BridgeForegroundService).serverPort}",
-                    Toast.LENGTH_LONG).show()
-            }
+            toast("网络已切换，新地址 http://$newIp:${SettingsRepository.get(this@BridgeForegroundService).serverPort}")
         }
     }
 
@@ -161,12 +163,7 @@ class BridgeForegroundService : Service() {
                     SessionState.setConnStatus("error")
                     // 在聊天记录里用红框提示（端口被占用），引导用户去设置中修改端口
                     SessionState.pushSystemNotice("⚠ " + getString(R.string.port_occupied, p))
-                    Handler(Looper.getMainLooper()).post {
-                        android.widget.Toast.makeText(
-                            this@BridgeForegroundService,
-                            getString(R.string.port_occupied, p), android.widget.Toast.LENGTH_LONG
-                        ).show()
-                    }
+                    toast(getString(R.string.port_occupied, p))
                 })
             runCatching { s.start(ip, port) }
                 .onSuccess {
@@ -196,17 +193,54 @@ class BridgeForegroundService : Service() {
                             SessionState.clearSystemNotices() // 端口冲突红框：服务正常起来后清除
                             acquireWake()
                             updateNotification()
-                            Handler(Looper.getMainLooper()).post {
-                                Toast.makeText(this@BridgeForegroundService,
-                                    "服务已启动，但绑定地址受限（已自动回退到所有网卡）",
-                                    Toast.LENGTH_LONG).show()
-                            }
+                            toast("服务已启动，但绑定地址受限（已自动回退到所有网卡）")
                         }.onFailure { fallbackErr ->
                             // 0.0.0.0 也失败 = 端口被占，start() 内部已触发 onPortConflict，这里仅记录
                             CrashLogger.logThrowable(fallbackErr, "server-start-fallback 0.0.0.0")
                         }
                     }
                 }
+        }
+    }
+
+    /** 主线程 Toast（IO 线程/协程内可安全调用） */
+    private fun toast(msg: String) {
+        Handler(Looper.getMainLooper()).post {
+            runCatching { Toast.makeText(this@BridgeForegroundService, msg, Toast.LENGTH_LONG).show() }
+        }
+    }
+
+    /**
+     * 手动刷新 IP（v1.1.9j，用户点击聊天地址卡片触发）。
+     *
+     * 背景：无网络时启动服务，HotspotIp.get() 只能回退 0.0.0.0；连上网后本应由系统
+     * 网络回调（onNetworkChanged）自动重绑，但部分 ROM 回调时机不可靠甚至不触发。
+     * 用户明确要求「不做轮询」，故提供本入口作为人工兜底：点一次卡片 = 重读一次网卡。
+     *
+     * 逻辑：
+     * - 地址变了（含 0.0.0.0 ↔ 真实 IP、真实 IP A → B）：停旧实例，用新地址 + 当前端口重绑；
+     * - 地址没变且服务正常：只刷新卡片显示并提示已是最新（不踢掉 PC 连接）；
+     * - 地址没变但 server 为空（此前启动失败，如端口被占）：同地址也重试一次绑定。
+     * 注意：Mutex 不可重入，这里不持 launchLock，直接调 launchServer（其内部持锁停旧起新）。
+     */
+    private fun refreshIp() {
+        registerNetworkWatch() // 服务经本入口冷启时补上网络监听（正常 startServer 也会注册）
+        scope.launch {
+            val newIp = HotspotIp.get(this@BridgeForegroundService)
+            val port = SettingsRepository.get(this@BridgeForegroundService).serverPort
+            val s = server
+            if (newIp == currentIp && s != null) {
+                // 地址未变：重刷一次卡片（selfUrl 可能还是启动时的 0.0.0.0 兜底文案）
+                SessionState.selfUrl = selfUrlOf(s)
+                SessionState.setConnStatus(SessionState.connStatus)
+                toast(if (newIp == HotspotIp.BIND_ALL) getString(R.string.no_network_ip)
+                      else getString(R.string.ip_unchanged, SessionState.selfUrl))
+                return@launch
+            }
+            CrashLogger.log("net", "手动刷新 IP：$currentIp → $newIp（端口 $port）")
+            currentIp = newIp
+            toast(getString(R.string.ip_refreshing, newIp, port))
+            launchServer(newIp) // 内部持 launchLock：先停旧实例再绑新地址
         }
     }
 
@@ -305,6 +339,7 @@ class BridgeForegroundService : Service() {
     companion object {
         const val ACTION_STOP = "com.lanbridge.STOP"
         const val ACTION_COPY_LINK = "com.lanbridge.COPY_LINK"
+        const val ACTION_REFRESH_IP = "com.lanbridge.REFRESH_IP"
         private const val CHANNEL = "lanbridge_transfer"
         private const val NOTIF_ID = 1001
 
