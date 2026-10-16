@@ -187,7 +187,9 @@ function fileIconSvg(name) {
   }
   return `<svg class="fileicon" viewBox="0 0 24 24" width="40" height="40"><path fill="${I.body}" d="M5.5,2.5 H14 L19.5,8 V21.5 H5.5 Z"/><path fill="${I.fold}" d="M14,2.5 V8 H19.5 Z"/>${I.g || ''}${extra}</svg>`;
 }
-function mediaKind(m) { return m.kind === 'image' ? 'image' : m.kind === 'video' ? 'video' : 'file'; }
+// v1.1.9k 修复：此前 mediaKind 没有 text 分支，kind:'text' 的文字消息掉进兜底 'file'，
+// 被渲染成「文件 0 B」空文件卡（v1.1.9d 网页重构引入的回归）。text 必须最先判断。
+function mediaKind(m) { return m.kind === 'text' ? 'text' : m.kind === 'image' ? 'image' : m.kind === 'video' ? 'video' : 'file'; }
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
 function download(m) { const src = m.url || m.data; if (!src) return; const a = document.createElement('a'); a.href = src; a.download = m.name || ''; a.click(); }
 async function copyItem(m) {
